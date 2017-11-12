@@ -183,7 +183,7 @@ class Hackerspace():
         return True, 1337
         #TODO insert communication with wireless socket-outlet here
 
-    def control_panel_cb(s):
+    def control_panel_cb(self, s):
         """
         Callback for when data is available on the serial connection to the
         control panel.
