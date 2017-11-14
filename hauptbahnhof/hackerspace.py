@@ -240,7 +240,7 @@ class Hackerspace():
             return
 
         if 'DEBUG' not in state_string:
-            print(state_string)
+            #print(state_string)
 
             if state_string[0] == '0':
                 if state_string[1] == '1':

@@ -1,4 +1,4 @@
-from hauptbahnhof import *
+from .hauptbahnhof import *
 
 import argparse
 import configparser

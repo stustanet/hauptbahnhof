@@ -1,4 +1,4 @@
-from hackerspace import Hackerspace
+from .hackerspace import Hackerspace
 
 import asyncio
 import serial
