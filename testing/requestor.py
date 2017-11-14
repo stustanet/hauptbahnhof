@@ -1,7 +1,4 @@
 #!/usr/bin/python3
-
-from hauptbahnhof.hapi import hapi
-
 import json
 import ssl
 import socket
@@ -28,7 +25,7 @@ def main():
     input("Connection established. Press anykey to continue.")
 
     #jsn = { 'op' : hapi.op.GET.value, 'data' : hapi.data.OPEN.value }
-    jsn = { 'op' : hapi.op.SET.value, 'data' : hapi.data.BULB.value }
+    jsn = { 'op' : 'SET' , 'data' : 'BULB' }
 
     count = stream.send(json.dumps(jsn).encode())
     print("Send {} bytes.".format(count))

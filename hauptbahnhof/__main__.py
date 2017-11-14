@@ -45,7 +45,6 @@ class Hauptbahnhof():
 
         writer.close()
 
-
     def __init__(self, l_addr, l_port, s_cert, s_key, client_certs, space):
         """
         Initialize a new Hauptbahnhof and the connections to its subcomponents.
