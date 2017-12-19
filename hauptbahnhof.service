@@ -1,0 +1,13 @@
+[Unit]
+Description=Hauptbahnhof - Hackerspace Management Service
+After=multi-user.target
+Requires=multi-user.target
+
+[Service]
+Type=simple
+User=hauptbahnhof
+WorkingDirectory=/home/hauptbahnhof
+EnvironmentFile=/etc/default/hauptbahnhof
+ExecStart=/usr/bin/python3 -m hauptbahnhof -c ./config.ini
+#Restart=always
+#RestartSec=3
