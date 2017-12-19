@@ -1,6 +1,10 @@
 #config.ini
 # Created by https://www.gitignore.io/api/python
 
+#TLS Certificate / Key
+cert.pem
+key.pem
+
 ### Python ###
 # Byte-compiled / optimized / DLL files
 __pycache__/
