@@ -4,6 +4,44 @@ import json
 import subprocess
 import socket
 
+# Temporary Workaround
+import sleekxmpp
+ROOM_TOPIC = "Hackerspace: {} | StuStaNet e. V. public chatroom | 42"
+
+# This is only a temporary workaround, to keep the hackerspace
+# status exported, until all services communicate directly
+# with the hauptbahnhof
+class MUCBot(sleekxmpp.ClientXMPP):
+    def __init__(self, jid, password, room, nick, message):
+        sleekxmpp.ClientXMPP.__init__(self, jid, password)
+
+        self.room = room
+        self.nick = nick
+        self.message= message
+
+        # The session_start event will be triggered when
+        # the bot establishes its connection with the server
+        # and the XML streams are ready for use. We want to
+        # listen for this event so that we we can initialize
+        # our roster.
+        self.add_event_handler("session_start", self.start)
+
+    def start(self, event):
+        print("start function called")
+        self.get_roster()
+        self.send_presence()
+        self.plugin['xep_0045'].joinMUC(self.room,
+                                        self.nick,
+                                        wait=True)
+
+        self.send_message(self.room,
+                          mbody='',
+                          msubject=ROOM_TOPIC.format(self.message),
+                          mtype='groupchat')
+
+        self.disconnect(wait=True)
+
+
 class Hackerspace():
     """
     An API for controlling and inspecting the StuStaNet e.V. Hackerspace.
@@ -226,6 +264,31 @@ class Hackerspace():
         return True, 1337
         #TODO insert communication with wireless socket-outlet here
 
+
+    # Workaround function, exporting Hackerspace status to Jabber Channel
+    def send_state(self, message):
+        print("Trying to send state", message)
+        # login every time the state changes
+        jid = 'erbsensuppe@jabber.ccc.de'
+        password = 'erbsensuppe'
+        room = 'admins@conference.jabber.stusta.mhn.de'
+        nick = 'knechtbot'
+
+        # Setup the MUCBot and register plugins. Note that while plugins may
+        # have interdependencies, the order in which you register them does
+        # not matter.
+        xmpp = MUCBot(jid, password, room, nick, message)
+        xmpp.register_plugin('xep_0030') # Service Discovery
+        xmpp.register_plugin('xep_0045') # Multi-User Chat
+        xmpp.register_plugin('xep_0199') # XMPP Ping
+
+        print("Trying to connect")
+        if xmpp.connect():
+            # block until message is send (sic!)
+            xmpp.process(block=False)
+        else:
+            print("Unable to connect.")
+
     def control_panel_cb(self, s):
         """
         Callback for when data is available on the serial connection to the
@@ -245,9 +308,11 @@ class Hackerspace():
             if state_string[0] == '0':
                 if state_string[1] == '1':
                     self.space_open = True
+                    self.send_state('open')
                     subprocess.call(['mpc', 'play'])
                 else:
                     self.space_open = False
+                    self.send_state('closed')
                     subprocess.call(['mpc', 'pause'])
 
             if state_string[0] == '1':
