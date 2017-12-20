@@ -10,7 +10,7 @@ def main():
     context.load_verify_locations('../cert.pem')
 
     s = socket.socket()
-    s.connect(('localhost', 1337))
+    s.connect(('knecht.stusta.de', 1337))
 
     try:
         stream = context.wrap_socket(s, server_side = False,
