@@ -1,9 +1,13 @@
 #config.ini
 # Created by https://www.gitignore.io/api/python
 
-#TLS Certificate / Key
+# Hauptbahnhof relevant configuration files
 cert.pem
 key.pem
+hauptbahnhof.ini
+
+# ARP-Scan Module
+hauptbahnhof/arp-scan
 
 ### Python ###
 # Byte-compiled / optimized / DLL files
