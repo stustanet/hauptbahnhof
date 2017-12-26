@@ -41,7 +41,6 @@ class MUCBot(sleekxmpp.ClientXMPP):
 
         self.disconnect(wait=True)
 
-
 class Hackerspace():
     """
     An API for controlling and inspecting the StuStaNet e.V. Hackerspace.
@@ -61,32 +60,32 @@ class Hackerspace():
 
         Message     :=  REQUEST | RESPONSE
 
-        REQUEST     :=  { 'op' : OPERATION, 'data' : TARGET [, 'arg' : DATA ] }
+        REQUEST     :=  { 'op' : OPERATION, 'data' : SERVICE [, 'arg' : DATA ] }
         RESPONSE    :=  { 'state' : STATE,
                           'msg' : DATA | ERROR
-                          [, 'data' : TARGET }
+                          [, 'data' : SERVICE }
 
             where ENTRY refers to an arbitrary member of the enum
                   DATA  refers to arbitrary data
                   ERROR refers to a str, containing an error message
 
         OPERATION   :=  GET | SET | REGISTER | UNREGISTER
-        TARGET      :=  OPEN | DEVICES | BULB | ALARM
+        SERVICE     :=  OPEN | DEVICES | BULB | ALARM
         STATE       :=  SUCCESS | FAIL | PUSH
 
-            where GET       : Request the value/data for the given TARGET
-                  SET       : Set the value/data for the given TARGET
+            where GET       : Request the value/data for the given SERVICE
+                  SET       : Set the value/data for the given SERVICE
                   REGISTER  : Register the client for PUSH messages on change of
-                              value of TARGET
+                              value of SERVICE
                   UNREGISTER: Unregister the client from a PUSH message
-                              abonnement for TARGET
+                              abonnement for SERVICE
 
                   'SUCCESS' : Denotes a successful request. The 'msg' field now
                               holds the requested data
                   'FAIL'    : Denotes a failed request. The 'msg' field now
                               holds an error message, describing what went wrong
                   'PUSH'    : The server pushed a message on behalf of a PUSH
-                              abonnement for TARGET. The 'msg' field now holds
+                              abonnement for SERVICE. The 'msg' field now holds
                               the value data.
 
     The currently supported values/modules and respective operation modes are:
@@ -114,12 +113,18 @@ class Hackerspace():
         space_network:  Range of the Hackerspace local network in CIDR notation
         """
 
+        self.services = {'OPEN'     : ['GET','SET','REGISTER'],
+                         'DEVICES'  : ['GET'],
+                         'BULB'     : ['SET'],
+                         'ALARM'    : ['SET']}
+
         self.local_netdev = local_netdev
         self.space_devices = space_devices
         self.space_network = space_network
         self.space_open = False
-        # Format: {'OPEN': [writer_obj1, writer_obj2,...], ...}
+        # Format: {'OPEN': [(reader0, writer0), (reader1, writer1),...], ...}
         self.push_devices = {}
+        self.push_device_lock = asyncio.Lock()
 
     def __del__(self):
         print("Hackerspace pwned")
@@ -131,75 +136,153 @@ class Hackerspace():
         print("Hackerspace pwned automatically")
 
     @asyncio.coroutine
+    def push_changes(self, service, value):
+        """
+        Push value of service to all registered targets
+        """
+        try:
+            targets = self.push_devices[service]
+        except KeyError as e:
+            print("Failed to retrieve PUSH targets for service"
+                  + " {}".format(service))
+            return
+
+        msg = { "state" : "PUSH",
+                "data"  : service,
+                "msg"   : value }
+        msg = json.dumps(msg)
+
+        for t in targets:
+
+            addr = t[1].get_extra_info('peername')
+            t[1].write(msg.encode())
+            yield
+
+            try:
+                yield from t[1].drain()
+            except ConnectionResetError as e:
+                self.remove_push_target(t, service)
+                print("{} xPx {}:{}".format(addr, service, value)
+                      + "Not reachable. Unregistering.")
+                continue
+
+            print("{} <P< {}:{}".format(addr, service, value))
+
+    @asyncio.coroutine
+    def add_push_target(self, conn, service):
+        """
+        Mutually exclusive add of a PUSH target to the recipient list
+        """
+        yield from self.push_device_lock.acquire()
+        try:
+            cur = self.push_devices[service]
+        except KeyError as e:
+            cur = []
+        cur.append(conn)
+        self.push_devices[service] = cur
+        self.push_device_lock.release()
+
+    @asyncio.coroutine
+    def remove_push_target(self, conn, service):
+        """
+        Mutually exclusive remove of a PUSH target from the recipient list
+        """
+        yield from self.push_device_lock.acquire()
+        try:
+            cur = self.push_devices[service]
+        except KeyError as e:
+            print("Service entry {} doesn't exist in dict.".format(service),
+                  "Nothing to remove.")
+            self.push_device_lock.release()
+            return
+
+        try:
+            cur.remove(conn)
+        except ValueError as e:
+            print("Requested removal of non-existant target {}".format(conn))
+        self.push_devices[service] = cur
+        self.push_device_lock.release()
+
+    @asyncio.coroutine
     def get_cb(self, jsn):
         """Callback for incoming GET REQUESTS"""
 
-        if (jsn['data'] == 'OPEN'):
-            return {'state' : 'SUCCESS', 'msg' : self.space_open}
+        try:
+            if (jsn['data'] == 'OPEN'):
+                return {'state' : 'SUCCESS', 'msg' : self.space_open}
 
-        elif (jsn['data'] == 'DEVICES'):
-            num = yield from self.get_number_of_network_devices()
-            return { 'state' : 'SUCCESS', 'msg' : num }
+            elif (jsn['data'] == 'DEVICES'):
+                num = yield from self.get_number_of_network_devices()
+                return { 'state' : 'SUCCESS', 'msg' : num }
 
-        elif (jsn['data'] == 'BULB'):
-            resp = "Can't request the status of BULB"
-            return { 'state' : 'FAIL', 'msg' : resp }
+            elif (jsn['data'] == 'BULB'):
+                resp = "Can't request the status of BULB"
+                return { 'state' : 'FAIL', 'msg' : resp }
 
-        elif (jsn['data'] == 'ALARM'):
-            resp = "Can't request the status of ALARM"
-            return { 'state' : 'FAIL', 'msg' : resp }
+            elif (jsn['data'] == 'ALARM'):
+                resp = "Can't request the status of ALARM"
+                return { 'state' : 'FAIL', 'msg' : resp }
 
-        else:
+            else:
+                return { 'state' : 'FAIL',
+                         'msg' :"GET {} operation unknown.".format(jsn['data'])}
+        except KeyError as e:
             return { 'state' : 'FAIL',
-                     'msg' : "GET {} operation unknown.".format(jsn['data']) }
+                     'msg'   : "No data parameter: {}".format(jsn) }
 
     @asyncio.coroutine
     def set_cb(self, jsn):
         """Callback for incoming SET REQUESTS"""
+        try:
+            if (jsn['data'] == 'OPEN'):
+                try:
+                    status = jsn['arg']
+                except KeyError as e:
+                    return {'state' : 'FAIL',
+                            'msg' : "No argument given for set operation"}
 
-        if (jsn['data'] == 'OPEN'):
-            try:
-                status = jsn['arg']
-            except KeyError as e:
-                return {'state' : 'FAIL',
-                        'msg' : "No argument given for set operation"}
+                if (isinstance(status, bool)):
+                    self.space_open = status
+                else:
+                     return {'state' : 'FAIL',
+                            'msg' : "Given argument not a boolean value" }
 
-            if (isinstance(status, bool)):
-                self.space_open = status
+                yield from self.push_changes('OPEN', self.space_open)
+
+                resp_str =("Hackerspace now "
+                           "{}".format('open' if self.space_open else 'closed'))
+                return {'state' : 'SUCCESS',
+                        'msg' : resp_str }
+
+            elif (jsn['data'] == 'DEVICES'):
+                return { 'state' : 'FAIL',
+                         'msg' : "Not a settable parameter" }
+
+            elif (jsn['data'] == 'BULB'):
+                state, resp = yield from self.flash_signal()
+                if (state):
+                    state = 'SUCCESS'
+                else:
+                    state = 'FAIL'
+                return { 'state' : state, 'msg' : resp }
+
+            elif (jsn['data'] == 'ALARM'):
+                state, resp = self.ring_alarm()
+                if (state):
+                    state = 'SUCCESS'
+                else:
+                    state = 'FAIL'
+                return { 'state' : state, 'msg' : resp }
             else:
-                 return {'state' : 'FAIL',
-                        'msg' : "Given argument not a boolean value" }
+                return { 'state' : 'FAIL',
+                         'msg': "SET {} operation unknown.".format(jsn['data'])}
 
-            resp_str = ("Hackerspace now"
-                        "{}".format('open' if self.space_open else 'closed'))
-            return {'state' : 'SUCCESS',
-                    'msg' : resp_str }
-
-        elif (jsn['data'] == 'DEVICES'):
+        except KeyError as e:
             return { 'state' : 'FAIL',
-                     'msg' : "Not a settable parameter" }
-
-        elif (jsn['data'] == 'BULB'):
-            state, resp = yield from self.flash_signal()
-            if (state):
-                state = 'SUCCESS'
-            else:
-                state = 'FAIL'
-            return { 'state' : state, 'msg' : resp }
-
-        elif (jsn['data'] == 'ALARM'):
-            state, resp = self.ring_alarm()
-            if (state):
-                state = 'SUCCESS'
-            else:
-                state = 'FAIL'
-            return { 'state' : state, 'msg' : resp }
-        else:
-            return { 'state' : 'FAIL',
-                     'msg' : "GET {} operation unknown.".format(jsn['data']) }
+                     'msg'   : "No data parameter: {}".format(jsn) }
 
     @asyncio.coroutine
-    def parse_request(self, r):
+    def parse_request(self, jsn):
         """ space.parse_request(str) -> str
 
         Parse the given JSON request and return an appropriate answer
@@ -209,16 +292,8 @@ class Hackerspace():
                    'SET' : self.set_cb }
 
         resp = ''
-        jsn = {'empty' : 'empty'}
 
-        # interpret the retrieved JSON object according to API specifications
-        try:
-            jsn = json.loads(r)
-        except json.decoder.JSONDecodeError as e:
-            resp = { 'state' : 'FAIL',
-                     'msg'   : "Malformed JSON object: {}".format(e) }
-
-        # Retrieve the right calback function for the incoming request and exec
+        # Retrieve the right callback function for the incoming request and exec
         try:
             cb = cb_for[jsn['op']]
             resp = yield from cb(jsn)
@@ -227,7 +302,7 @@ class Hackerspace():
             resp = { 'state' : 'FAIL',
                      'msg' : "Invalid operation: '{}'".format(op) }
 
-        return json.dumps(resp)
+        return resp
 
     @asyncio.coroutine
     def get_number_of_network_devices(self):
@@ -263,7 +338,6 @@ class Hackerspace():
         print("Now flashing signal lamp...")
         return True, 1337
         #TODO insert communication with wireless socket-outlet here
-
 
     # Workaround function, exporting Hackerspace status to Jabber Channel
     def send_state(self, message):
@@ -308,11 +382,11 @@ class Hackerspace():
             if state_string[0] == '0':
                 if state_string[1] == '1':
                     self.space_open = True
-                    self.send_state('open')
+#                    self.send_state('open')
                     subprocess.call(['mpc', 'play'])
                 else:
                     self.space_open = False
-                    self.send_state('closed')
+#                    self.send_state('closed')
                     subprocess.call(['mpc', 'pause'])
 
             if state_string[0] == '1':

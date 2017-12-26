@@ -1,6 +1,7 @@
 from .hackerspace import Hackerspace
 
 import asyncio
+import json
 import serial
 import ssl
 
@@ -18,28 +19,6 @@ class Hauptbahnhof():
     checks. The certificates of all trusted clients need to be copied to the
     server beforehand.
     """
-
-    @asyncio.coroutine
-    def handle_connection(self, reader, writer):
-        """
-        Handle incoming connections and dispatch request depending on content.
-
-        This function is called automatically upon a successful TLS connection
-        """
-        data = yield from reader.read(2048)
-        message = data.decode()
-
-        # interpret the incoming request
-        resp = yield from self.space.parse_request(message)
-
-        addr = writer.get_extra_info('peername')
-        print("{} >>> {}".format(addr, message))
-
-        writer.write(resp.encode())
-        print("{} <<< {}".format(addr, resp))
-        yield from writer.drain()
-
-        writer.close()
 
     def __init__(self, l_addr, l_port, s_cert, s_key, client_certs, space):
         """
@@ -86,6 +65,7 @@ class Hauptbahnhof():
                                     port = self.l_port,
                                     ssl = context,
                                     loop = self.loop)
+
         self.server = self.loop.run_until_complete(coro)    # launch loop
 
         # Serve requests until Ctrl+C is pressed
@@ -99,31 +79,6 @@ class Hauptbahnhof():
         self.server.close()
         self.loop.run_until_complete(self.server.wait_closed())
         self.loop.close()
-
-        """
-        # create listening socket
-        bindsocket = socket.socket()
-        bindsocket.bind((self.l_addr, int(self.l_port)))
-        bindsocket.listen(5)
-
-        s, fromaddr = bindsocket.accept()
-        print(fromaddr)
-
-        try:
-            stream = context.wrap_socket(s, server_side = True)
-        except ssl.SSLError as e:
-            print("Connection from {} failed: {}".format(fromaddr,e))
-            return None
-
-        print(stream.server_hostname)
-        print(stream.getpeercert())
-        data = stream.recv(1024)
-        print(data)
-
-        bindsocket.close()
-        stream.shutdown(socket.SHUT_RDWR)
-        stream.close()
-        """
 
     def __del__(self):
         try:
@@ -143,3 +98,205 @@ class Hauptbahnhof():
             self.loop.close()
         except RuntimeError:
             return
+
+    @asyncio.coroutine
+    def handle_push_connection(self, conn, service):
+        """
+        Check an existing tls push channel for incoming data and handle it.
+        """
+        # Read from channel until unregistration requested or connection dies
+        r = conn[0]
+        w = conn[1]
+        addr = w.get_extra_info('peername')
+
+        while(True):
+            # try to read data from the stream
+            json_load_failed = False
+            data = yield from r.read(2048)
+
+            if (data == b''):
+                print("{} xxx {}".format(addr, "Connection reset"))
+                break
+
+            message = data.decode()
+
+            print("{} >>> {}".format(addr, message))
+
+            # interpret the received JSON object
+            try:
+                jsn = json.loads(message)
+            except json.decoder.JSONDecodeError as e:
+                json_load_failed = True
+
+            if (json_load_failed):
+                resp = { 'state' : 'FAIL',
+                         'msg'   : "Malformed JSON object: {}".format(message) }
+                resp = json.dumps(resp)
+
+                w.write(resp.encode())
+                yield
+
+                try:
+                    yield from w.drain()
+                except ConnectionResetError as e:
+                    print("{} xxx {}".format(addr, "Connection reset"))
+                    break
+
+                print("{} <<< {}".format(addr, resp))
+
+            else:               # json format correct
+                try:
+                    if (jsn['op'] == 'UNREGISTER'):
+                        resp = { 'state': 'SUCCESS',
+                                 'msg'  : "Unregistered from service: "
+                                          + "{}".format(service)}
+                        resp = json.dumps(resp)
+
+                        w.write(resp.encode())
+                        yield
+
+                        try:
+                            yield from w.drain()
+                        except ConnectionResetError as e:
+                            print("{} xxx {}".format(addr, "Connection reset"))
+                            break
+
+                        print("{} <<< {}".format(addr, resp))
+                        break
+
+                    else:       # other operation than REGISTER
+                        resp = yield from self.space.parse_request(jsn)
+
+                        resp = json.dumps(resp)
+                        w.write(resp.encode())
+                        yield
+
+                        try:
+                            yield from w.drain()
+                        except ConnectionResetError as e:
+                            print("{} xxx {}".format(addr, "Connection reset"))
+                            break
+
+                        print("{} <<< {}".format(addr, resp))
+
+                except KeyError as e:
+                    resp = { 'state' : 'FAIL',
+                             'msg'   : "Unknown operation: {}".format(jsn) }
+                    resp = json.dumps(resp)
+
+                    w.write(resp.encode())
+                    yield
+
+                    try:
+                        yield from w.drain()
+                    except ConnectionResetError as e:
+                        print("{} xxx {}".format(addr, "Connection reset"))
+                        break
+
+                    print("{} <<< {}".format(addr, resp))
+
+        yield from self.unregister_client(conn, service)
+        w.close()
+
+    @asyncio.coroutine
+    def register_client(self, conn, service):
+        """
+        Register the given connection for PUSH messages from the specified
+        service.
+        """
+        addr = conn[1].get_extra_info('peername')
+        yield from self.space.add_push_target(conn, service)
+        print("{} -R- {}".format(addr, service))
+        coro = self.handle_push_connection(conn, service)
+        self.loop.create_task(coro)
+
+    @asyncio.coroutine
+    def unregister_client(self, conn, service):
+        """
+        Unregister the given connection from PUSH messages for service
+        """
+        addr = conn[1].get_extra_info('peername')
+        yield from self.space.remove_push_target(conn, service)
+        print("{} xRx {}".format(addr, service))
+
+    @asyncio.coroutine
+    def handle_connection(self, reader, writer):
+        """
+        Handle incoming connections and dispatch request depending on content.
+
+        This function is called automatically upon a successful TLS connection.
+        """
+        addr = writer.get_extra_info('peername')
+        register_req = False
+        json_load_failed = False
+
+        print("{} --- {}".format(addr, "Connected"))
+
+        data = yield from reader.read(2048)
+
+        if (data == b''):
+            print("{} xxx {}".format(addr, "Connection reset"))
+            writer.close()
+            return
+
+        message = data.decode()
+        print("{} >>> {}".format(addr, message))
+
+        # interpret the received JSON object
+        try:
+            jsn = json.loads(message)
+        except json.decoder.JSONDecodeError as e:
+            json_load_failed = True
+
+        if (json_load_failed):
+            resp = { 'state' : 'FAIL',
+                     'msg'   : "Malformed JSON object: {}".format(e) }
+            resp = json.dumps(resp)
+        else:
+
+            # check if the the client wants to register for PUSH messages
+            try:
+                if (jsn['op'] == 'REGISTER'):
+                    service = jsn['data']
+
+                    if (service in self.space.services.keys()):
+                        if ('REGISTER' in self.space.services[service]):
+                            yield from self.register_client((reader, writer),
+                                                            service)
+                            register_req = True
+                            resp = { 'state': 'SUCCESS',
+                                     'msg'  : 'Registered for '
+                                              + '{}.'.format(service)}
+
+                        else:
+                            resp = { 'state': 'FAIL',
+                                     'msg':"Service {}".format(service)
+                                       + " can not be registered for."}
+
+                    else:
+                        resp = { 'state': 'FAIL',
+                                 'msg':"Service {} doesn't".format(service)
+                                       + " exist." }
+
+                else:
+                    resp = yield from self.space.parse_request(jsn)
+
+            except KeyError as e:
+                resp = { 'state' : 'FAIL',
+                         'msg'   : "Unknown operation: {}".format(jsn) }
+
+
+        resp = json.dumps(resp)
+        writer.write(resp.encode())
+        yield
+
+        try:
+            yield from writer.drain()
+        except ConnectionResetError as e:
+            return
+
+        print("{} <<< {}".format(addr, resp))
+
+        if (not register_req):
+            writer.close()
+
