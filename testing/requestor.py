@@ -25,7 +25,7 @@ def main():
     input("Connection established. Press anykey to continue.")
 
     #jsn = { 'op' : hapi.op.GET.value, 'data' : hapi.data.OPEN.value }
-    jsn = { 'op' : 'SET' , 'data' : 'BULB' }
+    jsn = { 'op' : 'SET' , 'data' : 'OPEN', 'arg' : True }
 
     count = stream.send(json.dumps(jsn).encode())
     print("Send {} bytes.".format(count))

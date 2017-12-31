@@ -63,7 +63,7 @@ class Hackerspace():
         REQUEST     :=  { 'op' : OPERATION, 'data' : SERVICE [, 'arg' : DATA ] }
         RESPONSE    :=  { 'state' : STATE,
                           'msg' : DATA | ERROR
-                          [, 'data' : SERVICE }
+                          [, 'data' : SERVICE ] }
 
             where ENTRY refers to an arbitrary member of the enum
                   DATA  refers to arbitrary data
@@ -310,10 +310,11 @@ class Hackerspace():
 
         Return the number of non-stationary, connected network devices.
         """
-        proc = subprocess.Popen(['./arp-scan', self.space_network],
+        proc = subprocess.Popen(['./hauptbahnhof/arp-scan', self.space_network],
                                  stdout=subprocess.PIPE)
 
         output = proc.communicate()[0].decode('utf8')
+        print("\n" + output)
         output = output.split()
         proc.terminate()
 
@@ -377,16 +378,15 @@ class Hackerspace():
             return
 
         if 'DEBUG' not in state_string:
-            #print(state_string)
 
             if state_string[0] == '0':
                 if state_string[1] == '1':
                     self.space_open = True
-#                    self.send_state('open')
+                    self.send_state('open')
                     subprocess.call(['mpc', 'play'])
                 else:
                     self.space_open = False
-#                    self.send_state('closed')
+                    self.send_state('closed')
                     subprocess.call(['mpc', 'pause'])
 
             if state_string[0] == '1':
