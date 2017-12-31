@@ -25,7 +25,6 @@ class MUCBot(sleekxmpp.ClientXMPP):
         # listen for this event so that we we can initialize
         # our roster.
         self.add_event_handler("session_start", self.start)
-
     def start(self, event):
         print("start function called")
         self.get_roster()
@@ -127,13 +126,13 @@ class Hackerspace():
         self.push_device_lock = asyncio.Lock()
 
     def __del__(self):
-        print("Hackerspace pwned")
+        print("Hackerspace pwned", flush=True)
 
     def __enter__(self):
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
-        print("Hackerspace pwned automatically")
+        print("Hackerspace pwned automatically", flush=True)
 
     @asyncio.coroutine
     def push_changes(self, service, value):
@@ -141,7 +140,11 @@ class Hackerspace():
         Push value of service to all registered targets
         """
         try:
-            targets = self.push_devices[service]
+            if (self.push_devices != {}):
+                targets = self.push_devices[service]
+            else:
+                return
+
         except KeyError as e:
             print("Failed to retrieve PUSH targets for service"
                   + " {}".format(service))
@@ -374,7 +377,7 @@ class Hackerspace():
         try:
             state_string = s.readline().decode()
         except:
-            print("Failed to read data from serial connection")
+            print("Failed to read data from serial connection", flush=True)
             return
 
         if 'DEBUG' not in state_string:

@@ -49,7 +49,8 @@ class Hauptbahnhof():
         try:
             context.load_verify_locations(self.client_certs)
         except ssl.SSLError as e:
-            print("Trusted client certificates empty or malformed. Aborting.")
+            print("Trusted client certificates empty or malformed. Aborting.",
+                  flush=True)
             return None
 
         # setup serial connection to arduino (ruprecht)
