@@ -1,10 +1,5 @@
 argparse
-ast
 asyncio
 configparser
-enum
-json
 serial
-socket
-ssl
-subprocess
+pyserial_asyncio

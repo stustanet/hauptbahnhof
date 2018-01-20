@@ -19,8 +19,9 @@ import json
 import subprocess
 import socket
 
-import haspalight
-import rupprecht
+import hauptbahnhof.rupprecht as rupprecht
+import hauptbahnhof.rcswitch as rcswitch
+
 
 # Temporary Workaround
 import sleekxmpp
@@ -148,7 +149,7 @@ class Hackerspace():
         self.push_device_lock = asyncio.Lock()
 
         # For remote controlling the arduino: initialize the rupprecht interface
-        self.rupprecht = rupprecht.RupprechtInterface("/dev/ttyUSB0")
+        self.rupprecht = rupprecht.RupprechtInterface("/dev/ttyACM0")
         self.rupprecht.subscribe_button(self.rupprecht_button_msg)
 
         self.light = rcswitch.Quigg1000(code=1337, subaddr=1, rupprecht=self.rupprecht)
@@ -428,12 +429,15 @@ class Hackerspace():
         if msg['open']:
             self.space_open = True
             yield from self.push_changes('OPEN', self.space_open)
+            yield from self.rupprecht.text("Status: Closed");
             subprocess.call(['mpc', 'play'])
             yield from self.light.on()
             yield from self.alarm.off()
+
         else:
             self.space_open = False
             yield from self.push_changes('OPEN', self.space_open)
+            yield from self.rupprecht.text("Status: Open");
             subprocess.call(['mpc', 'pause'])
             yield from self.light.off()
             yield from self.alarm.off();
