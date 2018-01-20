@@ -150,7 +150,10 @@ class Hackerspace():
         # For remote controlling the arduino: initialize the rupprecht interface
         self.rupprecht = rupprecht.RupprechtInterface("/dev/ttyUSB0")
         self.rupprecht.subscribe_button(self.rupprecht_button_msg)
-        self.light = haspalight.HaspaLight(self.rupprecht)
+
+        self.light = rcswitch.Quigg1000(code=1337, subaddr=1, rupprecht=self.rupprecht)
+        self.alarm = rcswitch.Quigg1000(code=1337, subaddr=2, rupprecht=self.rupprecht)
+        self.fan = rcswitch.Quigg1000(code=1337, subaddr=3, rupprecht=self.rupprecht)
 
     def __del__(self):
         print("Hackerspace pwned", flush=True)
@@ -418,46 +421,32 @@ class Hackerspace():
             xmpp.process(block=False)
         else:
             print("Unable to connect.")
-    def control_panel_cb(self, s):
-        """
-        Callback for when data is available on the serial connection to the
-        control panel.
 
-        s:      serial.Serial object on which data is available for reading
-        """
-        try:
-            state_string = s.readline().decode()
-        except:
-            print("Failed to read data from serial connection", flush=True)
-            return
 
-        if 'DEBUG' not in state_string:
-
-            if state_string[0] == '0':
-                if state_string[1] == '1':
-                    self.space_open = True
-                    self.send_state('open')
-                    subprocess.call(['mpc', 'play'])
-                else:
-                    self.space_open = False
-                    self.send_state('closed')
-                    subprocess.call(['mpc', 'pause'])
-
-            if state_string[0] == '1':
-                subprocess.call(['mpc', 'volume', '+5'])
-            if state_string[0] == '2':
-                subprocess.call(['mpc', 'volume', '-5'])
-            if state_string[0] == '3':
-                if state_string[1] == '1':
-                    subprocess.call(['mpc', 'toggle'])
-
+    @asyncio.coroutine
     def rupprecht_button_msg(msg):
-        # TODO parse the message received from rupprecht
         if msg['open']:
-            self.light.light.on()
+            self.space_open = True
+            yield from self.push_changes('OPEN', self.space_open)
+            subprocess.call(['mpc', 'play'])
+            yield from self.light.on()
+            yield from self.alarm.off()
         else:
-            self.light.light.off()
+            self.space_open = False
+            yield from self.push_changes('OPEN', self.space_open)
+            subprocess.call(['mpc', 'pause'])
+            yield from self.light.off()
+            yield from self.alarm.off();
+            yield from self.fan.off();
 
-        # TODO: Add volup voldown playpause
+        # TODO: Add volup voldown playpause !! POLARISATION !!
 
-        pass
+        if msg['volup']:
+            subprocess.call(['mpc', 'volume', '+5'])
+
+        if msg['voldown']:
+            subprocess.call(['mpc', 'volume', '-5'])
+
+        if msg['playpause'] and msg['open']:
+            subprocess.call(['mpc', 'toggle'])
+

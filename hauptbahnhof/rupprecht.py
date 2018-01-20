@@ -135,8 +135,7 @@ class RupprechtInterface:
         if str.startswith(msg, "BUTTON") :
             try:
                 self.buttons = json.loads(msg[len("BUTTON"):])
-                for b in self.button_callbacks:
-                    b(msg)
+                asyncio.gather([b(self.buttons) for b in self.button_callbacks], loop=self.loop)
             except json.decoder.JSONDecodeError:
                 print("Invalid json received:", msg)
         elif msg == "READY" and not self.ready:
