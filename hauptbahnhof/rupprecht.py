@@ -35,7 +35,7 @@ class RupprechtInterface:
 
         def connection_lost(self, exc):
             print('port closed, exiting')
-            self.master.loop.get_event_loop().stop()
+            self.master.loop.stop()
 
 
     def __init__(self, serial_port, baudrate=115200, loop=None):
@@ -56,7 +56,7 @@ class RupprechtInterface:
                 (lambda: RupprechtInterface.SerialProtocol(self)),
                 serial_port, baudrate=baudrate)
         loop.run_until_complete(coro)
-        self.echo_allowed = True;
+        self.echo_allowed = True
 
     def subscribe_button(self, callback):
         self.button_callbacks.append(callback)
@@ -78,11 +78,12 @@ class RupprechtInterface:
         # The queue is the message stack that has to be processed
         self._queue.append(msg)
         while self._queue:
+            self.response_event.clear()
             # Await, if there was another message in the pipeline that has not
             # yet been processed
             if not force:
                 while self.response_pending:
-                    print("Awaiting response")
+                    print("before sending '{}' we need a response for '{}'".format(msg, self.last_command))
                     await self.response_event.wait()
                     self.response_event.clear()
             print("Sending", msg)
@@ -99,43 +100,35 @@ class RupprechtInterface:
             if next_msg[-1] != '\n':
                 self.transport.write(b'\n')
 
-            if not expect_response:
-                self.response_pending = False
-            else:
-                while True:
-                    await self.response_event.wait()
-                    self.response_event.clear()
-                    try:
-                        if str.startswith(self.last_result, "ERROR"):
-                            raise RupprechtCommandError(msg)
-                        elif str.startswith(self.last_result, "OK"):
-                            if self.last_command == "CONFIG ECHO OFF":
-                                self.echo_allowed = False
-                            print(self.last_result)
-                            return True
-                        else:
-                            print("RAW RESPONSE: \"{}\"".format(self.last_result))
-                            #raise RupprechtCommandError("Unknown result code: {}".format(self.last_result))
-                    except Exception as e:
-                        print("Exception while parsing response", msg, e)
-                        break
-
-    def allow_next_message(self):
-        """
-        Allow the next message to be sent
-        """
-        self.response_event.set()
-        self.response_pending = False
+            await self.response_event.wait()
+            self.response_event.clear()
+            try:
+                if str.startswith(self.last_result, "ERROR"):
+                    raise RupprechtCommandError(msg)
+                elif str.startswith(self.last_result, "OK"):
+                    if self.last_command == "CONFIG ECHO OFF":
+                        self.echo_allowed = False
+                    self.response_pending = False
+                    self.response_event.set()
+                    return True
+                else:
+                    if not expect_response:
+                        self.response_pending = False
+                        return True
+                    #raise RupprechtCommandError("Unknown result code: {}".format(self.last_result))
+            except Exception as e:
+                print("Exception while parsing response", msg, e)
+                break
 
     def received(self, msg):
         msg = ''.join(msg).strip()
         if not msg:
             return
-        print("received", msg)
-        if str.startswith(msg, "BUTTON") :
+        print("received \033[03m{}\033[0m".format(msg))
+        if str.startswith(msg, "BUTTON"):
             try:
                 self.buttons = json.loads(msg[len("BUTTON"):])
-                asyncio.gather([b(self.buttons) for b in self.button_callbacks], loop=self.loop)
+                asyncio.gather(*[b(self.buttons) for b in self.button_callbacks], loop=self.loop)
             except json.decoder.JSONDecodeError:
                 print("Invalid json received:", msg)
         elif msg == "READY" and not self.ready:
@@ -143,7 +136,7 @@ class RupprechtInterface:
             self.ready_event.set()
         else:
             self.last_result = msg
-            self.allow_next_message(),
+            self.response_event.set()
 
     async def help(self):
         await self.send_raw("HELP")

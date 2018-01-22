@@ -281,9 +281,9 @@ class Hackerspace():
                 if (isinstance(status, bool)):
                     self.space_open = status
                     if status:
-                        yield from self.light.light.on()
+                        yield from self.light.on()
                     else:
-                        yield from self.light.light.off()
+                        yield from self.light.off()
                 else:
                      return {'state' : 'FAIL',
                             'msg' : "Given argument not a boolean value" }
@@ -308,7 +308,7 @@ class Hackerspace():
                 return { 'state' : state, 'msg' : resp }
 
             elif (jsn['data'] == 'ALARM'):
-                state, resp = self.ring_alarm()
+                state, resp = yield from self.ring_alarm()
                 if (state):
                     state = 'SUCCESS'
                 else:
@@ -317,10 +317,10 @@ class Hackerspace():
 
             elif (jsn['data'] == 'FAN'):
                 if (jsn['arg'] in ['on', 'start', '1', 1]):
-                    yield from self.light.fan.on()
+                    yield from self.fan.on()
                     return { 'state': 'SUCCESS', 'msg':'FAN is on' }
                 elif (jsn['arg'] in ['off', 'stop', '0', 0]):
-                    yield from self.light.fan.off()
+                    yield from self.fan.off()
                     return { 'state': 'SUCCESS', 'msg':'FAN is off' }
                 else:
                     return { 'state' : 'FAIL', 'msg' : 'unknown state flag {}'.format(jsn['arg']) }
@@ -383,18 +383,18 @@ class Hackerspace():
     def ring_alarm(self, duration=5):
         """ Play the alarm sound for the given amount of seconds """
         print("A les armes! (for {} seconds...)".format(duration))
-        yield from self.light.alarm.on()
-        yield from asyncio.wait(duration)
-        yield from self.light.alarm.off()
+        yield from self.alarm.on()
+        yield from asyncio.sleep(int(duration))
+        yield from self.alarm.off()
         return True, 42
 
     @asyncio.coroutine
     def flash_signal(self, duration=5):
         """ Flash the signal lamp for the given amount of seconds """
         print("Now flashing signal lamp...")
-        yield from self.light.light.on()
-        yield from asyncio.wait(duration)
-        yield from self.light.light.off()
+        yield from self.light.on()
+        yield from asyncio.sleep(int(duration))
+        yield from self.light.off()
 
         return True, 1337
         #TODO insert communication with wireless socket-outlet here
@@ -425,25 +425,24 @@ class Hackerspace():
 
 
     @asyncio.coroutine
-    def rupprecht_button_msg(msg):
-        if msg['open']:
+    def rupprecht_button_msg(self, msg):
+        if msg['open'] and not self.space_open:
             self.space_open = True
-            yield from self.push_changes('OPEN', self.space_open)
-            yield from self.rupprecht.text("Status: Closed");
-            subprocess.call(['mpc', 'play'])
             yield from self.light.on()
-            yield from self.alarm.off()
-
-        else:
-            self.space_open = False
+            self.send_state("open")
             yield from self.push_changes('OPEN', self.space_open)
-            yield from self.rupprecht.text("Status: Open");
-            subprocess.call(['mpc', 'pause'])
+            yield from self.rupprecht.text("Status: Closed")
+            subprocess.call(['mpc', 'play'])
+            yield from self.alarm.off()
+        elif not msg['open'] and self.space_open:
+            self.space_open = False
             yield from self.light.off()
-            yield from self.alarm.off();
-            yield from self.fan.off();
-
-        # TODO: Add volup voldown playpause !! POLARISATION !!
+            self.send_state("closed")
+            yield from self.push_changes('OPEN', self.space_open)
+            yield from self.rupprecht.text("Status: Open")
+            subprocess.call(['mpc', 'pause'])
+            yield from self.alarm.off()
+            yield from self.fan.off()
 
         if msg['volup']:
             subprocess.call(['mpc', 'volume', '+5'])
