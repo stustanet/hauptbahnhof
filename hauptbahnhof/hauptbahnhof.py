@@ -69,13 +69,9 @@ class Hauptbahnhof():
             return None
 
         # setup serial connection to arduino (ruprecht)
-        self.sconn = serial.Serial('/dev/ttyACM0', 9600)
 
         # setup asynchronous communication
         self.loop = asyncio.get_event_loop()        # create the loop
-        self.loop.add_reader(self.sconn,            # add callback for incoming
-                             space.control_panel_cb,# serial data
-                             self.sconn)
         coro = asyncio.start_server(self.handle_connection, # start tls server
                                     host = self.l_addr,
                                     port = self.l_port,

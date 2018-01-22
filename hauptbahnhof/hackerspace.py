@@ -19,6 +19,10 @@ import json
 import subprocess
 import socket
 
+import hauptbahnhof.rupprecht as rupprecht
+import hauptbahnhof.rcswitch as rcswitch
+
+
 # Temporary Workaround
 import sleekxmpp
 ROOM_TOPIC = "Hackerspace: {} | StuStaNet e. V. public chatroom | 42"
@@ -40,6 +44,8 @@ class MUCBot(sleekxmpp.ClientXMPP):
         # listen for this event so that we we can initialize
         # our roster.
         self.add_event_handler("session_start", self.start)
+
+
     def start(self, event):
         print("start function called")
         self.get_roster()
@@ -110,6 +116,7 @@ class Hackerspace():
         'DEVICES'   | Amount of NICs in Space network | [GET]
         'BULB'      | Flash the beacon light          | [SET]
         'ALARM'     | Play the alarm sound            | [SET]
+        'FAN'       | Control the fan                 | [SET]
 
     A client may only send messages of type REQUEST, while the Hauptbahnhof will
     reply with a message of type RESPONSE. All other formats are erroneous and
@@ -130,7 +137,8 @@ class Hackerspace():
         self.services = {'OPEN'     : ['GET','SET','REGISTER'],
                          'DEVICES'  : ['GET'],
                          'BULB'     : ['SET'],
-                         'ALARM'    : ['SET']}
+                         'ALARM'    : ['SET'],
+                         'FAN'      : ['SET']}
 
         self.local_netdev = local_netdev
         self.space_devices = space_devices
@@ -139,6 +147,14 @@ class Hackerspace():
         # Format: {'OPEN': [(reader0, writer0), (reader1, writer1),...], ...}
         self.push_devices = {}
         self.push_device_lock = asyncio.Lock()
+
+        # For remote controlling the arduino: initialize the rupprecht interface
+        self.rupprecht = rupprecht.RupprechtInterface("/dev/ttyACM0")
+        self.rupprecht.subscribe_button(self.rupprecht_button_msg)
+
+        self.light = rcswitch.Quigg1000(code=1337, subaddr=1, rupprecht=self.rupprecht)
+        self.alarm = rcswitch.Quigg1000(code=1337, subaddr=2, rupprecht=self.rupprecht)
+        self.fan = rcswitch.Quigg1000(code=1337, subaddr=3, rupprecht=self.rupprecht)
 
     def __del__(self):
         print("Hackerspace pwned", flush=True)
@@ -241,6 +257,10 @@ class Hackerspace():
                 resp = "Can't request the status of ALARM"
                 return { 'state' : 'FAIL', 'msg' : resp }
 
+            elif (jsn['data'] == 'FAN'):
+                resp = "Can't request the status of " + jsn['data']
+                return { 'state' : 'FAIL', 'msg' : resp }
+
             else:
                 return { 'state' : 'FAIL',
                          'msg' :"GET {} operation unknown.".format(jsn['data'])}
@@ -258,9 +278,12 @@ class Hackerspace():
                 except KeyError as e:
                     return {'state' : 'FAIL',
                             'msg' : "No argument given for set operation"}
-
                 if (isinstance(status, bool)):
                     self.space_open = status
+                    if status:
+                        yield from self.light.on()
+                    else:
+                        yield from self.light.off()
                 else:
                      return {'state' : 'FAIL',
                             'msg' : "Given argument not a boolean value" }
@@ -285,12 +308,23 @@ class Hackerspace():
                 return { 'state' : state, 'msg' : resp }
 
             elif (jsn['data'] == 'ALARM'):
-                state, resp = self.ring_alarm()
+                state, resp = yield from self.ring_alarm()
                 if (state):
                     state = 'SUCCESS'
                 else:
                     state = 'FAIL'
                 return { 'state' : state, 'msg' : resp }
+
+            elif (jsn['data'] == 'FAN'):
+                if (jsn['arg'] in ['on', 'start', '1', 1]):
+                    yield from self.fan.on()
+                    return { 'state': 'SUCCESS', 'msg':'FAN is on' }
+                elif (jsn['arg'] in ['off', 'stop', '0', 0]):
+                    yield from self.fan.off()
+                    return { 'state': 'SUCCESS', 'msg':'FAN is off' }
+                else:
+                    return { 'state' : 'FAIL', 'msg' : 'unknown state flag {}'.format(jsn['arg']) }
+
             else:
                 return { 'state' : 'FAIL',
                          'msg': "SET {} operation unknown.".format(jsn['data'])}
@@ -349,12 +383,19 @@ class Hackerspace():
     def ring_alarm(self, duration=5):
         """ Play the alarm sound for the given amount of seconds """
         print("A les armes! (for {} seconds...)".format(duration))
+        yield from self.alarm.on()
+        yield from asyncio.sleep(int(duration))
+        yield from self.alarm.off()
         return True, 42
 
     @asyncio.coroutine
     def flash_signal(self, duration=5):
         """ Flash the signal lamp for the given amount of seconds """
         print("Now flashing signal lamp...")
+        yield from self.light.on()
+        yield from asyncio.sleep(int(duration))
+        yield from self.light.off()
+
         return True, 1337
         #TODO insert communication with wireless socket-outlet here
 
@@ -382,35 +423,33 @@ class Hackerspace():
         else:
             print("Unable to connect.")
 
-    def control_panel_cb(self, s):
-        """
-        Callback for when data is available on the serial connection to the
-        control panel.
 
-        s:      serial.Serial object on which data is available for reading
-        """
-        try:
-            state_string = s.readline().decode()
-        except:
-            print("Failed to read data from serial connection", flush=True)
-            return
+    @asyncio.coroutine
+    def rupprecht_button_msg(self, msg):
+        if msg['open'] and not self.space_open:
+            self.space_open = True
+            yield from self.light.on()
+            self.send_state("open")
+            yield from self.push_changes('OPEN', self.space_open)
+            yield from self.rupprecht.text("Status: Closed")
+            subprocess.call(['mpc', 'play'])
+            yield from self.alarm.off()
+        elif not msg['open'] and self.space_open:
+            self.space_open = False
+            yield from self.light.off()
+            self.send_state("closed")
+            yield from self.push_changes('OPEN', self.space_open)
+            yield from self.rupprecht.text("Status: Open")
+            subprocess.call(['mpc', 'pause'])
+            yield from self.alarm.off()
+            yield from self.fan.off()
 
-        if 'DEBUG' not in state_string:
+        if msg['volup']:
+            subprocess.call(['mpc', 'volume', '+5'])
 
-            if state_string[0] == '0':
-                if state_string[1] == '1':
-                    self.space_open = True
-                    self.send_state('open')
-                    subprocess.call(['mpc', 'play'])
-                else:
-                    self.space_open = False
-                    self.send_state('closed')
-                    subprocess.call(['mpc', 'pause'])
+        if msg['voldown']:
+            subprocess.call(['mpc', 'volume', '-5'])
 
-            if state_string[0] == '1':
-                subprocess.call(['mpc', 'volume', '+5'])
-            if state_string[0] == '2':
-                subprocess.call(['mpc', 'volume', '-5'])
-            if state_string[0] == '3':
-                if state_string[1] == '1':
-                    subprocess.call(['mpc', 'toggle'])
+        if msg['playpause'] and msg['open']:
+            subprocess.call(['mpc', 'toggle'])
+
