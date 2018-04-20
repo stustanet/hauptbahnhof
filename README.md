@@ -76,7 +76,7 @@ overview over the protocol is provided in the following:
 The currently supported services and their respective operation modes are:
 
           Target    |           Description           |  Operation Modes
-    ----------------+---------------------------------+---------------------
+    ----------------|---------------------------------|---------------------
         'OPEN'      | Hackerspace Status              | [GET/SET/REGISTER]
         'DEVICES'   | Amount of NICs in Space network | [GET]
         'BULB'      | Flash the beacon light          | [SET]
@@ -88,3 +88,44 @@ The project is split into two main modules. Main network functionality,
 connection management and data dispatching is implemented in the `Hauptbahnhof`
 class, while hackerspace management logic and interaction with hardware devices
 is implemented in the `Hackerspace` class.
+
+
+**Cert Magic**
+
+The hauptbahnhof environment is secured using our own CA (on the hauptbahnhof), which only accespts keys stored in a trusted database.
+
+Here is how you create the CA initially:
+
+```
+openssl req -x509 -newkey rsa:4096 -sha256 -nodes -keyout hauptbahnhof.key -out hauptbahnhof.crt
+```
+
+This generates the CA (the private key) and the public certificate as the root of the certificate chain for all clients.
+
+When one creates a new client, it has to receive a new key (on the client! - private keys must never leave a host!)
+
+```
+openssl req -out client.csr -new -newkey rsa:2048 -nodes -keyout client.key
+```
+
+Now the client.csr (certificate signing request) is sent over to hauptbahnhof
+
+In order for us to trust it, we have to sign it on hauptbahnhof:
+
+```
+openssl x509 -req -in <client.csr> -CA hauptbahnhof.crt  -CAkey hauptbahnhof.key  -CAcreateserial -out <client.crt> -sha256
+```
+
+Now - we have a crt! Crts are nice. so we save it to trust it:
+
+```
+cat <client.crt> >> trusted.pem
+```
+
+Finally - the client has to trust the hauptbahnhof, therefore we copy over the hauptbahnhof.crt (NOT!! the key!)
+
+```
+cp hauptbahnhof.crt <client/trusted.pem>
+```
+
+Now - happy hauptbahnhofing
