@@ -16,7 +16,7 @@ class Babel:
         self.hbf.subscribe('/haspa/power/requestinfo', self.command_requestinfo)
 
         self.ledstrip_states = [[0,0,0,0], [0,0,0,0]]
-        self.espids = ['esp1', 'esp2']
+        self.espids = ['a9495a00','024c5a00']
 
         # TODO create this mapping:
         # mapps from (color, id) ==> (self.ledstrip indexes)
