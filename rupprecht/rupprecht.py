@@ -9,7 +9,7 @@ from hauptbahnhof import Hauptbahnhof
 
 from . import rcswitch
 
-class RupprechtError:
+class RupprechtError(Exception):
     pass
 
 class RupprechtCommandError(RupprechtError):
@@ -133,11 +133,7 @@ class RupprechtInterface:
             self.response_event.clear()
             # Await, if there was another message in the pipeline that has not
             # yet been processed
-            if not force:
-                while self.response_pending:
-                    print("before sending '{}' we need a response for '{}'".format(msg, self.last_command))
-                    await self.response_event.wait()
-                    self.response_event.clear()
+
             print("Sending", msg)
             # If the queue has been processed by somebody else in the meantime
             if not self._queue:
@@ -179,8 +175,8 @@ class RupprechtInterface:
         print("received \033[03m{}\033[0m".format(msg))
         if str.startswith(msg, "BUTTON"):
             try:
-                self.buttons = json.loads(msg[len("BUTTON"):])
-                asyncio.gather(*[b(self.buttons) for b in self.button_callbacks], loop=self.loop)
+                buttons = json.loads(msg[len("BUTTON"):])
+                asyncio.gather(*[b(buttons) for b in self.button_callbacks], loop=self.loop)
             except json.decoder.JSONDecodeError:
                 print("Invalid json received:", msg)
         elif msg == "READY" and not self.ready:
