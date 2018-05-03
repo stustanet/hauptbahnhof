@@ -3,21 +3,13 @@ from hauptbahnhof import Hauptbahnhof
 
 from rupprecht.rupprecht import Rupprecht
 
-
-messages = asyncio.Queue()
-async def on_message(client, message, _):
-    print("Got message: %s"%message)
-    await messages.put(message)
-
-
 async def test(loop):
     testbf = Hauptbahnhof(loop=loop)
+
     await asyncio.sleep(2)
-    # Now everythin should be set up
 
-    await testbf.publish("/haspa/led", {'rupprecht-table':1023})
+    await testbf.publish("/haspa/status", {'haspa':'open'}) # without blacklist
 
-    # This module is not sending any status back
     try:
         await testbf.teardown()
     except asyncio.CancelledError:
