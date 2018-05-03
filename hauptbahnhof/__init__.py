@@ -1,0 +1,1 @@
+from .hauptbahnhof import Hauptbahnhof
