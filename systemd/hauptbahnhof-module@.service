@@ -1,0 +1,14 @@
+[Unit]
+Description=Hauptbahnhof %i-Module
+After=network.target
+Before=hauptbahnhof.service
+
+[Service]
+Type=simple
+User=johannes
+WorkingDirectory=/usr/local/bin/hauptbahnhof
+ExecStart=/usr/local/bin/hauptbahnhof/venv/bin/python3 -m %i
+
+
+[Install]
+WantedBy=multi-user.target

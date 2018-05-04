@@ -1,0 +1,5 @@
+[Unit]
+Description=Hauptbahnhof Hackerspace Control System
+
+[Install]
+WantedBy=multi-user.target
