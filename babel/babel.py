@@ -18,14 +18,13 @@ class Babel:
         self.ledstrip_states = [[0, 0, 0, 0], [0, 0, 0, 0]]
         self.espids = ['a9495a00', 'c14e5a00']
 
-        # TODO create this mapping:
         # mapps from (color, id) ==> (self.ledstrip indexes)
         self.idxpair = {
             # The first one has cold and warm swapped...
-            ('c', 1):(0, 1),
-            ('w', 1):(0, 0),
-            ('c', 2):(0, 3),
-            ('w', 2):(0, 2),
+            ('w', 2):(0, 0),
+            ('c', 2):(0, 1),
+            ('w', 1):(0, 2),
+            ('c', 1):(0, 3),
             # This one has cold and warm right
             ('c', 3):(1, 0),
             ('w', 3):(1, 1),
@@ -72,18 +71,23 @@ class Babel:
                             self.ledstrip_states[idx[0]][idx[1]] = int(value)
 
                 elif len(tmp) == 3 and tmp[1] in ('c', 'w') and abs(int(tmp[2])) <= 4:
-                    idx = self.idxpair[(tmp[1],abs(int(tmp[2])))]
+                    idx = self.idxpair[(tmp[1], abs(int(tmp[2])))]
                     group_changed |= self.ledstrip_states[idx[0]][idx[1]] != int(value)
                     self.ledstrip_states[idx[0]][idx[1]] = int(value)
 
         self.hbf.log.info("Done mapping: ")
         self.hbf.log.info(self.ledstrip_states)
         if group_changed:
-            for idx, e in enumerate(self.espids):
-                msg[e] = self.ledstrip_states[idx]
+            for idx, ledidx in enumerate(self.espids):
+                msg[ledidx] = self.ledstrip_states[idx]
         await self.hbf.publish('/haspa/led', msg)
+        print("MSG: ", msg)
 
     async def command_requestinfo(self, client, msg, _):
+        """
+        Request details about configured led mappings
+        """
+        del client, msg
         await self.hbf.publish('/haspa/power/info', {
             'documentation':'too lazy to implement'
         })
