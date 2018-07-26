@@ -27,6 +27,8 @@ class Hauptbahnhof:
         # find master config
         self._config = self.config("hauptbahnhof")
 
+        self._host = self._config['host']
+
         self._subscriptions = {}
         self._mqtt = None
         self._mqtt_queue = []
@@ -65,27 +67,26 @@ class Hauptbahnhof:
         mqtt.loop_start()
 
         mqtt.on_message = self.on_message
-
         mqtt.on_connect = lambda client, userdata, flags, rc: self.connected.set()
         try:
-            await mqtt.connect(self._config['host'])
-        except KeyError:
-            self.log.error("Could not connect to %s"%self._config['host'])
+            await mqtt.connect(self._host)
+        except:
+            self.log.error("Could not connect to %s", self._host)
             self.loop.cancel()
+            raise
         await self.connected.wait()
-        self.log.info("Connected to %s" % self._config['host'])
+        self.log.info("Successfully connected to %s", self._config['host'])
 
         for topic in self._subscriptions:
             mqtt.subscribe(topic)
 
         while self._mqtt_queue:
             topic, msg = self._mqtt_queue.pop(0)
-            self.log.debug("Topic: %s"%topic)
+            self.log.debug("Topic: %s", topic)
             await self._mqtt.publish(topic, msg)
 
         # Now we have mqtt available!
         self._mqtt = mqtt
-        self.log.info("Startup done")
 
     async def message_processing(self):
         while True:
@@ -104,7 +105,7 @@ class Hauptbahnhof:
                 await asyncio.gather(*[fut(client, payloadobj, msg) for fut in futures])
             except json.JSONDecodeError:
                 self.log("Invalid json received: %s"%payload)
-            except Exception as e:
+            except Exception:
                 traceback.print_exc()
 
     def on_message(self, client, userdata, msg):

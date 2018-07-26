@@ -15,20 +15,22 @@ class Babel:
         self.hbf.subscribe('/haspa/power', self.command_translate)
         self.hbf.subscribe('/haspa/power/requestinfo', self.command_requestinfo)
 
-        self.ledstrip_states = [[0,0,0,0], [0,0,0,0]]
-        self.espids = ['a9495a00','024c5a00']
+        self.ledstrip_states = [[0, 0, 0, 0], [0, 0, 0, 0]]
+        self.espids = ['a9495a00', 'c14e5a00']
 
         # TODO create this mapping:
         # mapps from (color, id) ==> (self.ledstrip indexes)
         self.idxpair = {
-            ('c',1):(0,0),
-            ('w',1):(0,1),
-            ('c',2):(0,2),
-            ('w',2):(0,3),
-            ('c',3):(1,0),
-            ('w',3):(1,1),
-            ('c',4):(1,2),
-            ('w',4):(1,3),
+            # The first one has cold and warm swapped...
+            ('c', 1):(0, 1),
+            ('w', 1):(0, 0),
+            ('c', 2):(0, 3),
+            ('w', 2):(0, 2),
+            # This one has cold and warm right
+            ('c', 3):(1, 0),
+            ('w', 3):(1, 1),
+            ('c', 4):(1, 2),
+            ('w', 4):(1, 3),
             }
 
         self.rupprecht_map = {
@@ -38,6 +40,7 @@ class Babel:
         }
 
     async def teardown(self):
+        """ clean up after yourself """
         await self.hbf.teardown()
 
     async def command_translate(self, client, message, _):
@@ -45,6 +48,7 @@ class Babel:
         space.get_number_of_network_devices() -> int
         Return the number of non-stationary, connected network devices.
         """
+        del client
         group_changed = False
         msg = {}
         for lamp, value in message.items():
@@ -60,7 +64,7 @@ class Babel:
                         group_changed |= self.ledstrip_states[a][b] != int(value)
                         self.ledstrip_states[a][b] = int(value)
 
-                elif len(tmp) == 2 and tmp[1] in ('c','w'):
+                elif len(tmp) == 2 and tmp[1] in ('c', 'w'):
                     for color, position in self.idxpair:
                         if color == tmp[1]:
                             idx = self.idxpair[(color, position)]
