@@ -34,16 +34,19 @@ class Rupprecht:
         self.space_is_open = False
 
         try:
-            r = RupprechtInterface("/dev/ttyACM0")
+            self.rupprecht = RupprechtInterface("/dev/ttyACM0")
         except serial.SerialException:
-            r = RupprechtInterface("/tmp/rupprechtemulator")
+            self.rupprecht = RupprechtInterface("/tmp/rupprechtemulator")
 
-        r.subscribe_button(self.button_message)
+        self.rupprecht.subscribe_button(self.button_message)
 
         self.imposed_ids = {
-            'rupprecht-table': rcswitch.Quigg1000(code=1337, subaddr=1, rupprecht=r),
-            'rupprecht-alarm': rcswitch.Quigg1000(code=1337, subaddr=2, rupprecht=r),
-            'rupprecht-fan': rcswitch.Quigg1000(code=1337, subaddr=3, rupprecht=r)
+            'rupprecht-table': rcswitch.Quigg1000(code=1337, subaddr=1,
+                                                  rupprecht=self.rupprecht),
+            'rupprecht-alarm': rcswitch.Quigg1000(code=1337, subaddr=2,
+                                                  rupprecht=self.rupprecht),
+            'rupprecht-fan': rcswitch.Quigg1000(code=1337, subaddr=3,
+                                                rupprecht=self.rupprecht)
         }
 
     async def teardown(self):
@@ -65,9 +68,11 @@ class Rupprecht:
         if msg['open'] and not self.space_is_open:
             self.space_is_open = True
             await self.hbf.publish('/haspa/status', json.dumps({'haspa':'open'}))
+            self.rupprecht.text("Status: Open")
         elif not msg['open'] and self.space_is_open:
             self.space_is_open = False
             await self.hbf.publish('/haspa/status', json.dumps({'haspa':'closed'}))
+            self.rupprecht.text("Status: Closed")
 
 class RupprechtInterface:
     class SerialProtocol(asyncio.Protocol):

@@ -75,15 +75,16 @@ class Hauptbahnhof:
             self.loop.cancel()
             raise
         await self.connected.wait()
-        self.log.info("Successfully connected to %s", self._config['host'])
 
+        self.log.info("Successfully connected to %s", self._config['host'])
         for topic in self._subscriptions:
             mqtt.subscribe(topic)
 
+        self._mqtt = mqtt
         while self._mqtt_queue:
             topic, msg = self._mqtt_queue.pop(0)
             self.log.debug("Topic: %s", topic)
-            await self._mqtt.publish(topic, msg)
+            self._mqtt.publish(topic, msg)
 
         # Now we have mqtt available!
         self._mqtt = mqtt
