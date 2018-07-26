@@ -49,7 +49,9 @@ class Rupprecht:
     async def teardown(self):
         await self.hbf.teardown()
 
-    async def command_led(self, source, payload, msg):
+    async def command_led(self, source, payload, mqttmsg):
+        del source, payload
+        msg = json.loads(mqttmsg.payload.decode('utf-8'))
         for devid, value in msg.items():
             try:
                 if value == 0:
@@ -62,10 +64,10 @@ class Rupprecht:
     async def button_message(self, msg):
         if msg['open'] and not self.space_is_open:
             self.space_is_open = True
-            await self.hbf.publish('/haspa/status', 'open')
+            await self.hbf.publish('/haspa/status', json.dumps({'haspa':'open'}))
         elif not msg['open'] and self.space_is_open:
             self.space_is_open = False
-            await self.hbf.publish('/haspa/status', 'closed')
+            await self.hbf.publish('/haspa/status', json.dumps({'haspa':'closed'}))
 
 class RupprechtInterface:
     class SerialProtocol(asyncio.Protocol):

@@ -22,15 +22,16 @@ class Hackerman:
         """
         React to a status change of the hackerspace - switch the lights, ...
         """
+        del client
         try:
             if 'haspa' in message:
-                if message['haspa'] == 'open':
+                if message['haspa'] in ['open', 'offen', 'auf']:
                     await self.hbf.publish('/haspa/power', {
                         'table':1023,
                         'fan':1023,
                         'ledstrip':400,
                         })
-                elif message['haspa'] == 'closed':
+                elif message['haspa'] in ['close', 'zu', 'closed']:
                     await self.hbf.publish('/haspa/power', {
                         'table':0,
                         'fan':0,
