@@ -5,7 +5,7 @@ Before=hauptbahnhof.service
 
 [Service]
 Type=simple
-User=johannes
+User=hauptbahnhof
 WorkingDirectory=/usr/local/bin/hauptbahnhof
 ExecStart=/usr/local/bin/hauptbahnhof/venv/bin/python3 -m %i
 

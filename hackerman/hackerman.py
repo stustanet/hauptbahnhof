@@ -27,28 +27,29 @@ class Hackerman:
         """
         del client
         try:
-            if 'haspa' in message:
-                if message['haspa'] in ['open', 'offen', 'auf']:
-                    await self.hbf.publish('/haspa/power', {
-                        'table':1023,
-                        'fan':1023,
-                        'ledstrip':400,
-                    })
-                    await self.hbf.publish('/haspa/music/control', {
-                        'play': True
-                    })
-                elif message['haspa'] in ['close', 'zu', 'closed']:
-                    await self.hbf.publish('/haspa/power', {
-                        'table':0,
-                        'fan':0,
-                        'ledstrip':0,
-                        'alarm':0,
-                    })
-                    await self.hbf.publish('/haspa/music/control', {
-                        'play': False
-                    })
+            if message['haspa'] in ['open', 'offen', 'auf']:
+                await self.hbf.publish('/haspa/power', {
+                    'table':1023,
+                    'fan':1023,
+                    'ledstrip':400,
+                })
+                await self.hbf.publish('/haspa/music/control', {
+                    'play': True
+                })
+            elif message['haspa'] in ['close', 'zu', 'closed']:
+                await self.hbf.publish('/haspa/power', {
+                    'table':0,
+                    'fan':0,
+                    'ledstrip':0,
+                    'alarm':0,
+                })
+                await self.hbf.publish('/haspa/music/control', {
+                    'play': False
+                })
+            else:
+                print("Haspa state undetermined: ", message['haspa'])
         except KeyError:
-            raise # because - fuck you sender! i will die now, silently.
+            print("/haspa/status message malformed: ", message)
 
     async def command_action(self, client, message, _):
         """ Handle actions like alarm or party """
@@ -68,7 +69,7 @@ class Hackerman:
                 delay = 0.05
 
                 sounds = [
-                    ('56', 3.5), # führer
+                    #('56', 3.5), # führer
                     ('97', 4.7), # sonnenschein
                     ('63', 5),   #epische musik
                     ('110', 3.7),#dota

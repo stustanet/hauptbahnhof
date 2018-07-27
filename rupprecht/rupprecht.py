@@ -58,21 +58,21 @@ class Rupprecht:
         for devid, value in msg.items():
             try:
                 if value == 0:
-                    self.imposed_ids[devid].off()
+                    await self.imposed_ids[devid].off()
                 elif value == 1023:
-                    self.imposed_ids[devid].on()
+                    await self.imposed_ids[devid].on()
             except KeyError:
                 pass
 
     async def button_message(self, msg):
         if msg['open'] and not self.space_is_open:
             self.space_is_open = True
-            await self.hbf.publish('/haspa/status', json.dumps({'haspa':'open'}))
-            self.rupprecht.text("Status: Open")
+            await self.hbf.publish('/haspa/status', {'haspa':'open'})
+            self.rupprecht.text("Status:Open... StuStaNet.e.V....")
         elif not msg['open'] and self.space_is_open:
             self.space_is_open = False
-            await self.hbf.publish('/haspa/status', json.dumps({'haspa':'closed'}))
-            self.rupprecht.text("Status: Closed")
+            await self.hbf.publish('/haspa/status', {'haspa':'closed'})
+            self.rupprecht.text("Status:Closed... StuStaNet.e.V....")
 
 class RupprechtInterface:
     class SerialProtocol(asyncio.Protocol):
