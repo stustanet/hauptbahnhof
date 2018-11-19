@@ -103,13 +103,13 @@ class Hauptbahnhof:
                     futures = self._subscriptions[msg.topic]
                 except KeyError:
                     # Received unknown message - this is strange, log and ignore
-                    self.log("Received unsubscribed message on %s with content: %s"%(
+                    self.log.info("Received unsubscribed message on %s with content: %s"%(
                         msg.topic, msg.payload))
 
                 try:
                     payloadobj = json.loads(payload)
                 except json.JSONDecodeError:
-                    self.log("Invalid json received: %s"%payload)
+                    self.log.info("Invalid json received: %s"%payload)
                     continue
                 except:
                     continue
