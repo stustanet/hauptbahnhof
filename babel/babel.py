@@ -14,6 +14,7 @@ class Babel:
         self.hbf = Hauptbahnhof(loop)
         self.hbf.subscribe('/haspa/power', self.command_translate)
         self.hbf.subscribe('/haspa/power/requestinfo', self.command_requestinfo)
+        self.hbf.subscribe('/haspa/power/status', self.command_requeststatus)
 
         self.ledstrip_states = [[0, 0, 0, 0], [0, 0, 0, 0]]
         self.espids = ['a9495a00', 'c14e5a00']
@@ -33,9 +34,9 @@ class Babel:
             }
 
         self.rupprecht_map = {
-            'table': 'rupprecht-table',
-            'alarm': 'rupprecht-alarm',
-            'fan': 'rupprecht-fan',
+            'table': ('rupprecht-table', 0),
+            'alarm': ('rupprecht-alarm', 0),
+            'fan': ('rupprecht-fan', 0),
         }
 
     async def teardown(self):
@@ -50,10 +51,11 @@ class Babel:
         del client
         group_changed = False
         msg = {}
-        for lamp, value in message.items():
+        for lamp, value in sorted(message.items()):
             ## The lamp is managed by rupprecht
             if lamp in self.rupprecht_map:
-                msg[self.rupprecht_map[lamp]] = int(value)
+                msg[self.rupprecht_map[lamp][0]] = int(value)
+                self.rupprecht_map[lamp][1] = int(value)
 
             ## The lamp is a led strip and needs to be aggregated
             if lamp.startswith('ledstrip'):
@@ -75,13 +77,12 @@ class Babel:
                     group_changed |= self.ledstrip_states[idx[0]][idx[1]] != int(value)
                     self.ledstrip_states[idx[0]][idx[1]] = int(value)
 
-        self.hbf.log.info("Done mapping: ")
         self.hbf.log.info(self.ledstrip_states)
         if group_changed:
             for idx, ledidx in enumerate(self.espids):
                 msg[ledidx] = self.ledstrip_states[idx]
         await self.hbf.publish('/haspa/led', msg)
-        print("MSG: ", msg)
+        print("Mapped Reduced Message: ", msg)
 
     async def command_requestinfo(self, client, msg, _):
         """
@@ -91,3 +92,14 @@ class Babel:
         await self.hbf.publish('/haspa/power/info', {
             'documentation':'too lazy to implement'
         })
+
+    async def command_requeststatus(self, client, msg, _):
+        msg = {}
+        for idx, espid in enumerate(self.espids):
+            msg[espid] = self.ledstrip_states[idx]
+
+        for rupid, value in self.rupprecht_map.values():
+            msg[rupid] = value
+
+        print("Full message: ", msg)
+        await self.hbf.publish('/haspa/led', msg)

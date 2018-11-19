@@ -65,6 +65,10 @@ Response for requestinfo
 
     DATA: {'light':{'desc':'a light'}}
 
+## /haspa/power/status
+Request to issue a full power status message to update all clients
+
+    DATA: {}
 
 ## /haspa/status
 Message that the haspa status has changed, please somebody decide what to do.
