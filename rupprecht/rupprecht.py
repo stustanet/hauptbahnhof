@@ -52,9 +52,9 @@ class Rupprecht:
     async def teardown(self):
         await self.hbf.teardown()
 
-    async def command_led(self, source, payload, mqttmsg):
-        del source, payload
-        msg = json.loads(mqttmsg.payload.decode('utf-8'))
+    async def command_led(self, source, msg, mqttmsg):
+        print("having LED command", msg)
+        del source, mqttmsg
         for devid, value in msg.items():
             try:
                 if value == 0:
@@ -68,16 +68,15 @@ class Rupprecht:
         if msg['open'] and not self.space_is_open:
             self.space_is_open = True
             await self.hbf.publish('/haspa/status', {'haspa':'open'})
-            self.rupprecht.text("Status:Open... StuStaNet.e.V....")
+            await self.rupprecht.text("Status:Open... StuStaNet.e.V....")
         elif not msg['open'] and self.space_is_open:
             self.space_is_open = False
             await self.hbf.publish('/haspa/status', {'haspa':'closed'})
-            self.rupprecht.text("Status:Closed... StuStaNet.e.V....")
+            await self.rupprecht.text("Status:Closed... StuStaNet.e.V....")
 
 class RupprechtInterface:
     def __init__(self, serial_port, baudrate=115200, loop=None):
         self.loop = loop or asyncio.get_event_loop()
-
 
         self.button_callbacks = [];
 
@@ -106,17 +105,31 @@ class RupprechtInterface:
 
     async def receive_messages(self):
         while True:
-            line = await self.reader.readline()
-            line = line.strip()
+            try:
+                print("Waiting for input:")
+                line = await self.reader.readline()
+            except serial.SerialException:
+                print("SerialException, will terminate")
+                self.loop.cancel()
+                return
+            print("Received: ", line)
+            line = line.decode('ascii').strip()
             if str.startswith(line, "BUTTON"):
+                print("Button message")
                 await self.button_queue.put(line[len("BUTTON"):])
             else:
+                print("Into data queue")
                 await self.data_queue.put(line)
+                print("done")
 
     async def handlecallbacks(self):
-        await self.send_raw("CONFIG ECHO OFF")
         # filter out the last echo
-        await self.data_queue.get()
+        #await self.data_queue.get()
+        #print("Waiting for message")
+        #while "READY" != self.data_queue.get():
+        #    pass
+        #await self.send_raw("CONFIG ECHO OFF", expect_response=False)
+        print("Rupprecht finally there")
 
         while True:
             button_msg = await self.button_queue.get()
@@ -128,7 +141,7 @@ class RupprechtInterface:
 
             for callback in self.button_callbacks:
                 try:
-                    callback(buttons)
+                    await callback(buttons)
                 except Exception as e:
                     print("Exception while executing callback for", button_msg , e)
 
@@ -141,8 +154,10 @@ class RupprechtInterface:
 
         This will wait, until the preceding message has been processed.
         """
-
+        print("Sending RUPPRECHT message: ", msg)
         self.writer.write(msg.encode('ascii'))
+        if msg[-1] != "\n":
+            self.writer.write(b"\n")
         await self.writer.drain()
         if expect_response:
             return await self.data_queue.get()

@@ -16,17 +16,17 @@ class Babel:
         self.hbf.subscribe('/haspa/power/requestinfo', self.command_requestinfo)
         self.hbf.subscribe('/haspa/power/status', self.command_requeststatus)
 
-        self.ledstrip_states = [[0, 0, 0, 0], [0, 0, 0, 0]]
-        self.espids = ['a9495a00', 'c14e5a00']
+        self.ledstrip_states = [[0] * 8, [0] * 8]
+        #self.espids = ['a9495a00', 'c14e5a00']
+        # new 4 channel ESPs
+        self.espids = ['f97c7300', 'dfd80b00']
 
         # mapps from (color, id) ==> (self.ledstrip indexes)
         self.idxpair = {
-            # The first one has cold and warm swapped...
-            ('w', 2):(0, 0),
-            ('c', 2):(0, 1),
-            ('w', 1):(0, 2),
-            ('c', 1):(0, 3),
-            # This one has cold and warm right
+            ('c', 2):(0, 0),
+            ('w', 2):(0, 1),
+            ('c', 1):(0, 6),
+            ('w', 1):(0, 7),
             ('c', 3):(1, 0),
             ('w', 3):(1, 1),
             ('c', 4):(1, 2),
@@ -55,7 +55,7 @@ class Babel:
             ## The lamp is managed by rupprecht
             if lamp in self.rupprecht_map:
                 msg[self.rupprecht_map[lamp][0]] = int(value)
-                self.rupprecht_map[lamp][1] = int(value)
+                self.rupprecht_map[lamp] = (self.rupprecht_map[lamp][0], int(value))
 
             ## The lamp is a led strip and needs to be aggregated
             if lamp.startswith('ledstrip'):

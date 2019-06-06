@@ -1,5 +1,6 @@
 [Unit]
 Description=Hauptbahnhof Hackerspace Control System
+Wants=mosquitto.service
 
 [Install]
 WantedBy=multi-user.target

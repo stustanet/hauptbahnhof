@@ -92,10 +92,14 @@ class Quigg1000:
 
     async def __send_msg(self, msg):
         if self.rupprecht:
+            print("sending via rupprecht message", msg)
             await self.rupprecht.light(msg)
+            await asyncio.sleep(1)
         if self.serial:
+            print("sending via raw message", msg)
             try:
-                self.ser.write(str.encode(msg))
+                self.serial.write(str.encode(msg))
+                await asyncio.sleep(1)
             except serial.SerialException:
                 print('Serial communication failed.')
 
@@ -113,6 +117,7 @@ def main():
                         default=False, action='store_true')
 
     args = parser.parse_args()
+    loop=asyncio.get_event_loop()
 
     try:
         s = serial.Serial(args.device, 9600)
@@ -121,7 +126,6 @@ def main():
         exit()
 
     r = Quigg1000(serial=s, loop=loop, code=args.set_code, subaddr=args.addr)
-    loop=asyncio.get_event_loop()
     loop.run_until_complete(r.state(args.state, args.debug))
 
 if __name__ == '__main__':

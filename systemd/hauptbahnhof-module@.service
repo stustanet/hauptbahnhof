@@ -1,6 +1,7 @@
 [Unit]
 Description=Hauptbahnhof %i-Module
-After=network.target
+After=network-online.target
+Requires=mosquitto.service
 Before=hauptbahnhof.service
 
 [Service]

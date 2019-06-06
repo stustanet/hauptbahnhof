@@ -54,11 +54,25 @@ class Hackerman:
     async def command_action(self, client, message, _):
         """ Handle actions like alarm or party """
         del client
+        print(message)
         if 'action' in message:
             if message['action'] == 'alarm':
+                print("Performing alarm...")
                 await self.hbf.publish('/haspa/power', {'alarm':1023})
                 await asyncio.sleep(2)
                 await self.hbf.publish('/haspa/power', {'alarm':0})
+
+            elif message['action'] == 'strobo':
+                for i in range(100):
+                    await self.hbf.publish('/haspa/power', {
+                        'ledstrip-c': 0
+                    })
+                    await asyncio.sleep(0.05)
+                    await self.hbf.publish('/haspa/power', {
+                        'ledstrip-c': 1023
+                    })
+                    await asyncio.sleep(0.03)
+
 
             elif message['action'] == 'party':
                 await self.hbf.publish('/haspa/power', {
