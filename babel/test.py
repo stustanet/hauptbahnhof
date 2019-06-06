@@ -11,7 +11,7 @@ async def on_message(client, message, _):
 
 
 async def test(loop):
-    testbf = Hauptbahnhof(loop=loop)
+    testbf = Hauptbahnhof("babel", loop=loop)
     testbf.subscribe("/haspa/led", on_message)
 
     await asyncio.sleep(2)

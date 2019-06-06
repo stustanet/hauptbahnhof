@@ -13,7 +13,7 @@ class Hauptbahnhof:
     Hauptbahnhof manager with a lot of convenience methods
     """
 
-    def __init__(self, loop=None):
+    def __init__(self, name, loop=None):
         try:
             idx = sys.argv.index('--confdir')
             self._configbase = sys.argv[idx + 1]
@@ -38,10 +38,10 @@ class Hauptbahnhof:
         self._message_process_task = self.loop.create_task(self.message_processing())
         self.connected = asyncio.Event(loop=self.loop)
 
-        logformat = '%(asctime)s | %(name)s | %(levelname)5s | %(message)s'
+        logformat = '%(name)s | %(levelname)5s | %(message)s'
         logging.basicConfig(format=logformat)
-        self.log = logging.getLogger(__name__)
-        self.log.setLevel(logging.DEBUG)
+        self.log = logging.getLogger(name)
+        self.log.setLevel(logging.INFO)
 
     async def teardown(self):
         """

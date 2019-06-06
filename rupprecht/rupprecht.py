@@ -29,7 +29,7 @@ class Rupprecht:
             loop = asyncio.get_event_loop()
 
         self.loop = loop
-        self.hbf = Hauptbahnhof(loop)
+        self.hbf = Hauptbahnhof("rupprecht", loop)
         self.hbf.subscribe('/haspa/led', self.command_led)
         self.space_is_open = False
 

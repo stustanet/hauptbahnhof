@@ -4,7 +4,7 @@ from hauptbahnhof import Hauptbahnhof
 from haspa_web.haspa import HaspaWeb
 
 async def test(loop):
-    testbf = Hauptbahnhof(loop=loop)
+    testbf = Hauptbahnhof("test", loop=loop)
     await asyncio.sleep(2)
     # Now everythin should be set up
 

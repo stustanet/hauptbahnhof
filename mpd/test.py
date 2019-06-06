@@ -4,7 +4,7 @@ from hauptbahnhof import Hauptbahnhof
 from mpd.mpd import MPD
 
 async def test(loop):
-    testbf = Hauptbahnhof(loop=loop)
+    testbf = Hauptbahnhof("test", loop=loop)
     await asyncio.sleep(2)
     # Now everythin should be set up
 

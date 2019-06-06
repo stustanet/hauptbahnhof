@@ -12,7 +12,7 @@ class NSA:
             loop = asyncio.get_event_loop()
 
         self.loop = loop
-        self.hbf = Hauptbahnhof(loop)
+        self.hbf = Hauptbahnhof("nsa", loop)
         self.hbf.subscribe('/haspa/nsa/scan', self.command_scan)
 
     async def teardown(self):

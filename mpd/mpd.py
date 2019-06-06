@@ -14,7 +14,7 @@ class MPD:
             loop = asyncio.get_event_loop()
 
         self.loop = loop
-        self.hbf = Hauptbahnhof(loop)
+        self.hbf = Hauptbahnhof("mpd", loop)
         self.hbf.subscribe('/haspa/music/control', self.command_control)
         self.hbf.subscribe('/haspa/music/song', self.command_song)
 

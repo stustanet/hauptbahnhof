@@ -4,7 +4,7 @@ from hauptbahnhof import Hauptbahnhof
 from rupprecht.rupprecht import Rupprecht
 
 async def test(loop):
-    testbf = Hauptbahnhof(loop=loop)
+    testbf = Hauptbahnhof("test", loop=loop)
 
     await asyncio.sleep(2)
 

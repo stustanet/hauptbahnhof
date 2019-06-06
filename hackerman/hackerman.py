@@ -14,7 +14,7 @@ class Hackerman:
             loop = asyncio.get_event_loop()
 
         self.loop = loop
-        self.hbf = Hauptbahnhof(loop)
+        self.hbf = Hauptbahnhof("hackerman", loop)
         self.hbf.subscribe('/haspa/status', self.command_status)
         self.hbf.subscribe('/haspa/action', self.command_action)
 

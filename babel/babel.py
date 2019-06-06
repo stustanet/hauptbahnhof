@@ -11,7 +11,7 @@ class Babel:
             loop = asyncio.get_event_loop()
 
         self.loop = loop
-        self.hbf = Hauptbahnhof(loop)
+        self.hbf = Hauptbahnhof("babel", loop)
         self.hbf.subscribe('/haspa/power', self.command_translate)
         self.hbf.subscribe('/haspa/power/requestinfo', self.command_requestinfo)
         self.hbf.subscribe('/haspa/power/status', self.command_requeststatus)
