@@ -20,7 +20,7 @@ class Babel:
         #self.espids = ['a9495a00', 'c14e5a00']
         # new 4 channel ESPs
         self.espids = ['f97c7300', 'dfd80b00']
-
+        self.terrasse_esp = ['93692600', '91ae5600', 'ae692600']
         # mapps from (color, id) ==> (self.ledstrip indexes)
         self.idxpair = {
             ('c', 2):(0, 0),
@@ -56,6 +56,28 @@ class Babel:
             if lamp in self.rupprecht_map:
                 msg[self.rupprecht_map[lamp][0]] = int(value)
                 self.rupprecht_map[lamp] = (self.rupprecht_map[lamp][0], int(value))
+
+            if lamp.startswith('terasse'):
+                tmp=lamp.split('-')
+                if len(tmp) == 1:
+                    for led in self.terrasse_esp:
+                        msg[led] = [value, value, value, value]
+                else:
+                    all_led = [0, 0, 0, 0]
+                    if 'r' in tmp[1]:
+                        all_led[0] = value
+
+                    if 'g' in tmp[1]:
+                        all_led[1] = value
+
+                    if 'b' in tmp[1]:
+                        all_led[2] = value
+
+                    if 'w' in tmp[1]:
+                        all_led[3] = value
+
+                    for led in self.terrasse_esp:
+                        msg[led] = all_led
 
             ## The lamp is a led strip and needs to be aggregated
             if lamp.startswith('ledstrip'):
