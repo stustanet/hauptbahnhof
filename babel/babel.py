@@ -51,33 +51,33 @@ class Babel:
         del client
         group_changed = False
         msg = {}
+        terasse_leds = [0,0,0,0]
         for lamp, value in sorted(message.items()):
             ## The lamp is managed by rupprecht
             if lamp in self.rupprecht_map:
                 msg[self.rupprecht_map[lamp][0]] = int(value)
                 self.rupprecht_map[lamp] = (self.rupprecht_map[lamp][0], int(value))
 
-            if lamp.startswith('terasse'):
+            if lamp.startswith('terrasse'):
                 tmp=lamp.split('-')
                 if len(tmp) == 1:
                     for led in self.terrasse_esp:
                         msg[led] = [value, value, value, value]
                 else:
-                    all_led = [0, 0, 0, 0]
                     if 'r' in tmp[1]:
-                        all_led[0] = value
+                        terasse_leds[0] = value
 
                     if 'g' in tmp[1]:
-                        all_led[1] = value
+                        terasse_leds[1] = value
 
                     if 'b' in tmp[1]:
-                        all_led[2] = value
+                        terasse_leds[2] = value
 
                     if 'w' in tmp[1]:
-                        all_led[3] = value
+                        terasse_leds[3] = value
 
                     for led in self.terrasse_esp:
-                        msg[led] = all_led
+                        msg[led] = terasse_leds
 
             ## The lamp is a led strip and needs to be aggregated
             if lamp.startswith('ledstrip'):
