@@ -12,10 +12,10 @@ async def on_message(client, message, _):
 
 async def test(loop):
     testbf = Hauptbahnhof("babel", loop=loop)
-    testbf.subscribe("/haspa/led", on_message)
+    testbf.subscribe("/haspa/licht/2/w", on_message)
 
     await asyncio.sleep(2)
-    await testbf.publish("/haspa/power", {'ledstrip':1023})
+    await testbf.publish("/haspa/licht", 1023)
 
     # Now everythin should be set up
     msg = await asyncio.wait_for(messages.get(), 10) # wait max 10 secs
@@ -23,7 +23,7 @@ async def test(loop):
         for lamp_value in a:
             assert(lamp_value == 1023)
 
-    await testbf.publish("/haspa/power", {'ledstrip-c-1':42})
+    await testbf.publish("/haspa/licht", 1023)
     msg = await asyncio.wait_for(messages.get(), 10) # wait max 10 secs
     for espidx, a in msg.items():
         for lamp_idx, lamp_value in enumerate(a):

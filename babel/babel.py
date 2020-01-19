@@ -1,127 +1,155 @@
-import asyncio
-from hauptbahnhof import Hauptbahnhof
+import paho.mqtt.client as mqtt
+import json
+
+# maximum recursion depth in translation
+MAX_TTL=5
 
 class Babel:
-    """
-    Translate the messages that arrived into new messages and accumulate their results
-    """
+    def __init__(self, config="/etc/hauptbahnhof/realms.json"):
+        with open(config) as cfgfile:
+            if not self.parse_config(cfgfile):
+                raise RuntimeError("Error in config.")
+        self.dfnode_state = {}
 
-    def __init__(self, loop=None):
-        if not loop:
-            loop = asyncio.get_event_loop()
+        self.mqtt = mqtt.Client()
+        self.mqtt.on_message = self.on_message
+        self.mqtt.on_connect = lambda mqtt, obj, flags, rc: \
+            self.subscribe_to_config(self.config)
+        self.mqtt.on_message = self.on_message
+        #self.mqtt.on_log = self.on_log
 
-        self.loop = loop
-        self.hbf = Hauptbahnhof("babel", loop)
-        self.hbf.subscribe('/haspa/power', self.command_translate)
-        self.hbf.subscribe('/haspa/power/requestinfo', self.command_requestinfo)
-        self.hbf.subscribe('/haspa/power/status', self.command_requeststatus)
+        self.connect()
 
-        self.ledstrip_states = [[0] * 8, [0] * 8]
-        #self.espids = ['a9495a00', 'c14e5a00']
-        # new 4 channel ESPs
-        self.espids = ['f97c7300', 'dfd80b00']
-        self.terrasse_esp = ['93692600', '91ae5600', 'ae692600']
-        # mapps from (color, id) ==> (self.ledstrip indexes)
-        self.idxpair = {
-            ('c', 2):(0, 0),
-            ('w', 2):(0, 1),
-            ('c', 1):(0, 6),
-            ('w', 1):(0, 7),
-            ('c', 3):(1, 0),
-            ('w', 3):(1, 1),
-            ('c', 4):(1, 2),
-            ('w', 4):(1, 3),
-            }
+    def connect(self):
+        self.mqtt.connect("knecht.stusta.de", 1883)
 
-        self.rupprecht_map = {
-            'table': ('rupprecht-table', 0),
-            'alarm': ('rupprecht-alarm', 0),
-            'fan': ('rupprecht-fan', 0),
-        }
+    def on_log(self, mqttc, obj, level, string):
+        print("mqtt: ", string)
 
-    async def teardown(self):
-        """ clean up after yourself """
-        await self.hbf.teardown()
+    def run(self):
+        self.mqtt.loop_forever()
 
-    async def command_translate(self, client, message, _):
-        """
-        space.get_number_of_network_devices() -> int
-        Return the number of non-stationary, connected network devices.
-        """
-        del client
-        group_changed = False
-        msg = {}
-        terasse_leds = [0,0,0,0]
-        for lamp, value in sorted(message.items()):
-            ## The lamp is managed by rupprecht
-            if lamp in self.rupprecht_map:
-                msg[self.rupprecht_map[lamp][0]] = int(value)
-                self.rupprecht_map[lamp] = (self.rupprecht_map[lamp][0], int(value))
+    def parse_config(self, config):
+        self.config = json.load(config)
 
-            if lamp.startswith('terrasse'):
-                tmp=lamp.split('-')
-                if len(tmp) == 1:
-                    for led in self.terrasse_esp:
-                        msg[led] = [value, value, value, value]
-                else:
-                    if 'r' in tmp[1]:
-                        terasse_leds[0] = value
+        # now process every path in the final translation result if it is parsable
+        success = True
+        for source, targets in self.config['translation'].items():
+            if source in ['documentation']:
+                # skip documentation paragraphs, because they are actually needed
+                continue
+            for target in targets:
+                if target not in self.config['translation']:
+                    # sanity check the node configuration
+                    try:
+                        cfg = self.topicconfig(target)
+                    except KeyError:
+                        success = False
+                        print("Cannot translate output path: ", target, "for translating from ", source)
+                        continue
+                    try:
+                        if cfg['type'] == "dfnode":
+                            _ = cfg['topic'] # require topic
+                            _ = cfg['espid'] # require espid
+                            index = cfg['index'] # 0 <= index < 8
+                            if int(index) < 0 or int(index) >= 8:
+                                print("index must be between (including) 0 and (excluding) 8")
+                                success = False
+                        elif cfg['type'] == "delock":
+                            _ = cfg['topic'] # require topic
 
-                    if 'g' in tmp[1]:
-                        terasse_leds[1] = value
+                    except KeyError as e:
+                        print("could not find expected element", e, "in path ", target)
+                        success = False
+                    except ValueError as e:
+                        print("could not convert to int", e)
+                        success = False
 
-                    if 'b' in tmp[1]:
-                        terasse_leds[2] = value
+        return success
 
-                    if 'w' in tmp[1]:
-                        terasse_leds[3] = value
+    def make_baseconfig_tree(self, subtree, path):
+        data = []
+        for key, value in subtree.items():
+            if isinstance(value, dict):
+                data += self.make_baseconfig_tree(value, path + "/" + key)
+            else:
+                return [path]
+        return data
 
-                    for led in self.terrasse_esp:
-                        msg[led] = terasse_leds
+    def subscribe_to_config(self, config):
+        try:
+            print("Connected")
+            # subscribe to all basechannels
+            baseconfig = self.make_baseconfig_tree(config['basechannels'], "")
 
-            ## The lamp is a led strip and needs to be aggregated
-            if lamp.startswith('ledstrip'):
-                tmp = lamp.split('-')
-                if len(tmp) == 1:
-                    for a, b in self.idxpair.values():
-                        group_changed |= self.ledstrip_states[a][b] != int(value)
-                        self.ledstrip_states[a][b] = int(value)
+            # subscribe to all translated topics
+            baseconfig += config['translation'].keys()
+            print("Subcribing to topics:\n\t", "\n\t".join(baseconfig))
+            self.mqtt.subscribe([
+                (topic, 0) for topic in baseconfig])
+        except Exception as e:
+            print('subscribe', e)
 
-                elif len(tmp) == 2 and tmp[1] in ('c', 'w'):
-                    for color, position in self.idxpair:
-                        if color == tmp[1]:
-                            idx = self.idxpair[(color, position)]
-                            group_changed |= self.ledstrip_states[idx[0]][idx[1]] != int(value)
-                            self.ledstrip_states[idx[0]][idx[1]] = int(value)
+    def on_message(self, mqtt, userdata, msg):
+        print("msg", msg.topic, ":", msg.payload)
+        try:
+            # TODO sanitize Payload:
+            # has to be 0 - 100 integer or string
+            payload = int(msg.payload)
+            self.handle_message(msg.topic, payload, MAX_TTL)
+        except Exception as e:
+            print('on_message', e)
 
-                elif len(tmp) == 3 and tmp[1] in ('c', 'w') and abs(int(tmp[2])) <= 4:
-                    idx = self.idxpair[(tmp[1], abs(int(tmp[2])))]
-                    group_changed |= self.ledstrip_states[idx[0]][idx[1]] != int(value)
-                    self.ledstrip_states[idx[0]][idx[1]] = int(value)
+    def handle_message(self, topic, payload, ttl):
+        if ttl <= 0:
+            raise RuntimeError("ttl exceeded")
+        if topic in self.config['translation']:
+            for subtopic in self.config['translation'][topic]:
+                self.handle_message(subtopic, payload, ttl-1)
+        else:
+            self.send_message(topic, payload)
 
-        self.hbf.log.info(self.ledstrip_states)
-        if group_changed:
-            for idx, ledidx in enumerate(self.espids):
-                msg[ledidx] = self.ledstrip_states[idx]
-        await self.hbf.publish('/haspa/led', msg)
-        print("Mapped Reduced Message: ", msg)
+    def send_message(self, topic, payload):
+        cfg = self.topicconfig(topic)
 
-    async def command_requestinfo(self, client, msg, _):
-        """
-        Request details about configured led mappings
-        """
-        del client, msg
-        await self.hbf.publish('/haspa/power/info', {
-            'documentation':'too lazy to implement'
-        })
+        if cfg['type'] == "dfnode":
+            self.send_dfnode(cfg, topic, payload)
+        elif cfg['type'] == "delock":
+            self.send_delock(cfg, topic, payload)
+        else:
+            print("Config had unknown type", cfg['type'])
 
-    async def command_requeststatus(self, client, msg, _):
-        msg = {}
-        for idx, espid in enumerate(self.espids):
-            msg[espid] = self.ledstrip_states[idx]
+    def topicconfig(self, topic):
+        try:
+            cfg = self.config['basechannels']
+            for layer in topic.split("/"):
+                if not layer:
+                    continue
+                cfg = cfg[layer]
+            return cfg
+        except KeyError:
+            raise KeyError("Cannot find basechannel " + topic)
 
-        for rupid, value in self.rupprecht_map.values():
-            msg[rupid] = value
+    def send_dfnode(self, cfg, topic, payload):
+        if cfg['topic'] not in self.dfnode_state:
+            self.dfnode_state[cfg['topic']] = [0] * 8
 
-        print("Full message: ", msg)
-        await self.hbf.publish('/haspa/led', msg)
+        self.dfnode_state[cfg['topic']][int(cfg['index'])] = payload
+
+        #print("Sending ", self.dfnode_state[cfg['topic']], "to", cfg['topic'])
+
+        payload = {cfg['espid']: self.dfnode_state[cfg['topic']]}
+        self.mqtt.publish(cfg['topic'], json.dumps(payload))
+
+
+    def send_delock(self, cfg, topic, payload):
+        msg = "OFF" if payload == 0 else "ON"
+        self.mqtt.publish(cfg['topic'], msg)
+
+
+def test():
+    babel = Babel(config="./config.json")
+    babel.run()
+
+if __name__ == "__main__":
+    test()

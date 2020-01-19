@@ -1,0 +1,40 @@
+{
+	"basechannels": {
+		"haspa": {
+			"licht": {
+				"1": {
+					"c": { "type":"dfnode", "topic": "/haspa/led", "index": "0", "espid": "f97c7300"},
+					"w": { "type":"dfnode", "topic": "/haspa/led", "index": "1", "espid": "f97c7300"}
+				},
+				"2": {
+					"c": { "type":"dfnode", "topic": "/haspa/led", "index": "6", "espid": "f97c7300"},
+					"w": { "type":"dfnode", "topic": "/haspa/led", "index": "7", "espid": "f97c7300"}
+				},
+				"3": {
+					"c": { "type":"dfnode", "topic": "/haspa/led", "index": "2", "espid": "dfd80b00"},
+					"w": { "type":"dfnode", "topic": "/haspa/led", "index": "3", "espid": "dfd80b00"}
+				},
+				"4": {
+					"c": { "type":"dfnode", "topic": "/haspa/led", "index": "0", "espid": "dfd80b00"},
+					"w": { "type":"dfnode", "topic": "/haspa/led", "index": "1", "espid": "dfd80b00"}
+				}
+			},
+			"steckdose": {
+				"peter": { "type":"delock", "topic": "cmnd/peter/Power" }
+			}
+		}
+	},
+	"documentation": "Base topics are /<realm>/<type>/<index>/<color>:value",
+	"translation": {
+		"/haspa/licht": ["/haspa/licht/w", "/haspa/licht/tisch"],
+		"/haspa/licht/w": ["/haspa/licht/1/w",
+						"/haspa/licht/2/w",
+						"/haspa/licht/3/w",
+						"/haspa/licht/4/w"],
+		"/haspa/licht/c": ["/haspa/licht/1/c",
+						"/haspa/licht/2/c",
+						"/haspa/licht/3/c",
+						"/haspa/licht/4/c"],
+		"/haspa/licht/tisch": [ "/haspa/steckdose/peter" ]
+	}
+}

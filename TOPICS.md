@@ -40,19 +40,20 @@ LED Control.
     DATA: {'espID':[0,0,0,0],}
 
 
-## /haspa/power
-Interface to translate commands to common names to /haspa/led. With this interface you have to specify each lamp individually. Commands are aggregated as much as possible
+## /haspa/licht
+Control the light.
 
-    DATA: {'light':[0-255], 'light2'}
+    DATA: 0    # make the hackerspace dark
+	DATA: 300  # make the hackerspace normal
+	DATA: 1023 # make wolfi blind
 
-A value of 0 means "off" a value of "1023" means on, if a light does not support dimming, its state will not change if you send anything else
+more of these haspa/licht topics are configured on knecht in /etc/hauptbahnhof/realms.json
 
-Currently Existing power controls:
+### /haspa/licht/{1,2,3,4}[/{c,w}
 
- * `ledstrip-(c|w)(-(1|2|3|4))?` = c|w cold/warm white, with optional index, enumerated begininng from the terasse door. If index is ommitted, all leds of that type are addressed.
- * `table`
- * `fan`
- * `alarm`
+set the value of licht 1-4 (enumerated terrace -> werkstatt) cold and warmwhite
+
+DATA is same as /haspa/licht
 
 ## /haspa/power/requestinfo
 Request all configured lamps with their description
