@@ -1,179 +1,164 @@
-#!/usr/bin/env python3
+import machine
+from machine import Pin
+from umqtt.simple import MQTTClient
+import ujson as json
+import network
+import gc
+import time
+import sys
 
-import asyncio
-import json
-import serial_asyncio
-import serial
 
-from hauptbahnhof import Hauptbahnhof
+LED_R = 14
+LED_G = 12
+LED_B = 13
+BTN_STATUS = 15
+BTN_VOL_PLUS = 2
+BTN_VOL_MINUS = 4
+BTN_PLAY = 0
 
-from . import rcswitch
 
-class RupprechtError(Exception):
-    pass
+CONFIG = {
+    'mqtt_server': '192.168.13.37',
+    'status_topic': '/haspa/status',
+    'music_topic': '/haspa/music/control'
+}
 
-class RupprechtCommandError(RupprechtError):
-    def __init__(self, command):
-        self.command = command
-
-    def __repr__(self):
-        return "RupprechtCommandError: {}".format(self.command)
 
 class Rupprecht:
-    """
-    Implement serial connection to rupprecht
-    """
+    def __init__(self, config):
+        self.config = config
+        self.mqtt = None
 
-    def __init__(self, loop=None):
-        if not loop:
-            loop = asyncio.get_event_loop()
+        self.pin_led_r = machine.PWM(Pin(LED_R, Pin.OUT))
+        self.pin_led_g = machine.PWM(Pin(LED_G, Pin.OUT))
+        self.pin_led_b = machine.PWM(Pin(LED_B, Pin.OUT))
 
-        self.loop = loop
-        self.hbf = Hauptbahnhof("rupprecht", loop)
-        self.hbf.subscribe('/haspa/led', self.command_led)
-        self.space_is_open = False
+        self.in_pins = [
+            Pin(BTN_STATUS, Pin.IN, Pin.PULL_UP),
+            Pin(BTN_PLAY, Pin.IN, Pin.PULL_UP),
+            Pin(BTN_VOL_PLUS, Pin.IN, Pin.PULL_UP),
+            Pin(BTN_VOL_MINUS, Pin.IN, Pin.PULL_UP)
+        ]
+        self.bounces = [0, 0, 0, 0]
+        self.curr_pin_states = [pin.value() for pin in self.in_pins]
 
+        self.pin_led_r.freq(1000)
+        self.set_led(0, 0, 1023)
+
+        print("GC After boot", gc.mem_free())
+
+    def init(self):
+        gc.collect()
+
+        sta_if = network.WLAN(network.STA_IF)
+
+        while not sta_if.isconnected():
+            print('[?] Waiting for network connection...')
+            time.sleep(0.2)
+
+        # Network is available
+        print("[*] IP address: ", sta_if.ifconfig()[0])
+
+    def connect(self):
+        self.mqtt = MQTTClient('rupprecht', self.config['mqtt_server'])
+        self.mqtt.set_callback(self.on_message)
+        self.mqtt.connect()
+
+    def on_message(self, topic, msg):
         try:
-            self.rupprecht = RupprechtInterface("/dev/ttyACM0")
-        except serial.SerialException:
-            self.rupprecht = RupprechtInterface("/tmp/rupprechtemulator")
+            msg = msg.decode('utf-8')
+            data = json.loads(msg)
+        except:
+            print("[!] Json error: ", msg)
 
-        self.rupprecht.subscribe_button(self.button_message)
+    def run(self):
+        gc.collect()
+        self.running = True
+        self.update_status()
 
-        self.imposed_ids = {
-            'rupprecht-table': rcswitch.Quigg1000(code=1337, subaddr=1,
-                                                  rupprecht=self.rupprecht),
-            'rupprecht-alarm': rcswitch.Quigg1000(code=1337, subaddr=2,
-                                                  rupprecht=self.rupprecht),
-            'rupprecht-fan': rcswitch.Quigg1000(code=1337, subaddr=3,
-                                                rupprecht=self.rupprecht)
-        }
+        while self.running:
+            gc.collect()
+            for i in range(4):  # debounce input pins
+                if self.in_pins[i].value() != self.curr_pin_states[i]:
+                    if self.bounces[i] >= 20:  # steady for 20ms
+                        self.curr_pin_states[i] = self.in_pins[i].value()
+                        self.pin_changed(i)
+                        self.bounces[i] = 0
+                    else:
+                        self.bounces[i] += 1
+                else:
+                    if self.bounces[i] > 0:
+                        self.bounces[i] -= 1
 
-    async def teardown(self):
-        await self.hbf.teardown()
+            self.mqtt.check_msg()
+            time.sleep(0.001)
 
-    async def command_led(self, source, msg, mqttmsg):
-        print("having LED command", msg)
-        del source, mqttmsg
-        for devid, value in msg.items():
-            try:
-                if value == 0:
-                    await self.imposed_ids[devid].off()
-                elif value == 1023:
-                    await self.imposed_ids[devid].on()
-            except KeyError:
-                pass
+    def set_led(self, r, g, b):
+        self.pin_led_r.duty(r)
+        self.pin_led_g.duty(g)
+        self.pin_led_b.duty(b)
 
-    async def button_message(self, msg):
-        if msg['open'] and not self.space_is_open:
-            self.space_is_open = True
-            await self.hbf.publish('/haspa/status', {'haspa':'open'})
-            await self.rupprecht.text("Status:Open... StuStaNet.e.V....")
-        elif not msg['open'] and self.space_is_open:
-            self.space_is_open = False
-            await self.hbf.publish('/haspa/status', {'haspa':'closed'})
-            await self.rupprecht.text("Status:Closed... StuStaNet.e.V....")
+    def pin_changed(self, index):
+        print('[*] Pin changed', index)
+        if index == 0:
+            self.update_status()
+        elif index == 1 and self.curr_pin_states[index] == 0:
+            payload = json.dumps({
+                'play': True
+            })
+            #self.mqtt.publish(self.config['music_topic'], payload)
+        elif index == 2 and self.curr_pin_states[index] == 0:
+            payload = json.dumps({
+                'volume': '+5'
+            })
+            #self.mqtt.publish(self.config['music_topic'], payload)
+        elif index == 3 and self.curr_pin_states[index] == 0:
+            payload = json.dumps({
+                'volume': '-5'
+            })
+            #self.mqtt.publish(self.config['music_topic'], payload)
 
-class RupprechtInterface:
-    def __init__(self, serial_port, baudrate=115200, loop=None):
-        self.loop = loop or asyncio.get_event_loop()
+    def update_status(self):
+        """change space status, 0 corresponds to open, 1 to closed"""
+        payload = json.dumps({
+            'haspa': 'open' if self.curr_pin_states[0] == 0 else 'closed'
+        })
+        if self.curr_pin_states[0] == 0:
+            self.set_led(0, 1023, 0)
+        else:
+            self.set_led(1023, 0, 0)
+        #self.mqtt.publish(self.config['status_topic'], payload)
 
-        self.button_callbacks = [];
-
-        coro = serial_asyncio.open_serial_connection(loop=self.loop, url=serial_port,
-                                                     baudrate=baudrate)
-        self.reader, self.writer = self.loop.run_until_complete(coro)
-
-        self.button_queue = asyncio.Queue(loop=loop)
-        self.data_queue = asyncio.Queue(loop=loop)
-        self.receive_task = self.loop.create_task(self.receive_messages())
-        self.callback_task = self.loop.create_task(self.handlecallbacks())
-
-
-    async def teardown(self):
-        try:
-            self.receive_task.cancel()
-            await self.receive_task
-        except asyncio.CancelledError:
-            pass
-
-        try:
-            self.callback_task.cancel()
-            await self.callback_task
-        except asyncio.CancelledError:
-            pass
-
-    async def receive_messages(self):
-        while True:
-            try:
-                print("Waiting for input:")
-                line = await self.reader.readline()
-            except serial.SerialException:
-                print("SerialException, will terminate")
-                self.loop.cancel()
-                return
-            print("Received: ", line)
-            line = line.decode('ascii').strip()
-            if str.startswith(line, "BUTTON"):
-                print("Button message")
-                await self.button_queue.put(line[len("BUTTON"):])
-            else:
-                print("Into data queue")
-                await self.data_queue.put(line)
-                print("done")
-
-    async def handlecallbacks(self):
-        # filter out the last echo
-        #await self.data_queue.get()
-        #print("Waiting for message")
-        #while "READY" != self.data_queue.get():
-        #    pass
-        #await self.send_raw("CONFIG ECHO OFF", expect_response=False)
-        print("Rupprecht finally there")
+    def main(self):
+        self.init()
 
         while True:
-            button_msg = await self.button_queue.get()
+            # network is available, dropping out of here recreates network context
+            print("[?] Starting setup")
             try:
-                buttons = json.loads(button_msg)
-            except json.JSONDecodeError:
-                print("Invalid json: ", button_msg)
-                continue
+                self.connect()
+                gc.collect()
+                print("[*] Ready for messages")
+                self.run()
+                gc.collect()
+                print("[!] connection loop terminated. reinitializing")
+            except KeyboardInterrupt:
+                # filter out and allow keyboard interrupts
+                raise
+            except Exception as exc:
+                #raise e # For debug times
+                sys.print_exception(exc)
+                print("Sleeping for 10 seconds")
+                time.sleep(10)
+                machine.reset()
 
-            for callback in self.button_callbacks:
-                try:
-                    await callback(buttons)
-                except Exception as e:
-                    print("Exception while executing callback for", button_msg , e)
 
-    def subscribe_button(self, callback):
-        self.button_callbacks.append(callback)
+rupprecht = Rupprecht(CONFIG)
 
-    async def send_raw(self, msg, expect_response=True):
-        """
-        Send the raw line to the serial stream
 
-        This will wait, until the preceding message has been processed.
-        """
-        print("Sending RUPPRECHT message: ", msg)
-        self.writer.write(msg.encode('ascii'))
-        if msg[-1] != "\n":
-            self.writer.write(b"\n")
-        await self.writer.drain()
-        if expect_response:
-            return await self.data_queue.get()
-        return None
+def main():
+    rupprecht.main()
 
-    async def help(self):
-        await self.send_raw("HELP")
 
-    async def config(self, key, value):
-        await self.send_raw("CONFIG {} {}".format(key, value))
-
-    async def text(self, msg):
-        await self.send_raw("TEXT {}".format(msg), expect_response=False)
-
-    async def button(self):
-        await self.send_raw("BUTTON", expect_response=False)
-
-    async def light(self, raw_msg):
-        await self.send_raw("LIGHT {}".format(raw_msg), expect_response=False)
+if __name__ == '__main__':
+    main()
