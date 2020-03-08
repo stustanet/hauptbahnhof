@@ -1,168 +1,95 @@
 import json
-import asyncio
-import traceback
-import io
 import sys
 import logging
+from json import JSONDecodeError
+from typing import Dict, Callable, Any, Union, Optional
 
-import libconf
-import aiomqtt
+import paho.mqtt.client as mqtt
+
 
 class Hauptbahnhof:
     """
     Hauptbahnhof manager with a lot of convenience methods
     """
 
-    def __init__(self, name, loop=None):
+    def __init__(self, name):
         try:
             idx = sys.argv.index('--confdir')
             self._configbase = sys.argv[idx + 1]
         except (ValueError, KeyError):
             self._configbase = '/etc/hauptbahnhof'
 
-        if not loop:
-            loop = asyncio.get_event_loop()
-
-        self.loop = loop
         # find master config
-        self._config = self.config("hauptbahnhof")
+        self.config = {}
+        self._load_config("hauptbahnhof")
 
-        self._host = self._config['host']
-
-        self._subscriptions = {}
-        self._mqtt = None
-        self._mqtt_queue = []
-
-        self._mqtt_start_task = self.loop.create_task(self.start())
-        self._queue = asyncio.Queue()
-        self._message_process_task = self.loop.create_task(self.message_processing())
-        self.connected = asyncio.Event(loop=self.loop)
+        self._mqtt = mqtt.Client(client_id=f'hauptbahnhof-{name}')
+        self._mqtt.on_message = self._on_message
+        self._mqtt.on_connect = self.on_connect
 
         logformat = '%(name)s | %(levelname)5s | %(message)s'
         logging.basicConfig(format=logformat)
         self.log = logging.getLogger(name)
-        self.log.setLevel(logging.INFO)
+        self.log.setLevel(logging.DEBUG)
+        self._mqtt.enable_logger(self.log)
 
-    async def teardown(self):
-        """
-        The last one switches off the light
-        """
-        self._mqtt_start_task.cancel()
-        self._message_process_task.cancel()
+    def run(self):
+        self._connect()
+        self._mqtt.loop_forever()
 
-        results = await asyncio.gather(self._mqtt_start_task,
-                                        self._message_process_task,
-                                        return_exceptions=True)
-        for r in results:
-            if isinstance (r, Exception):
-                if not isinstance(r, asyncio.CancelledError):
-                    traceback.print_exception(type(r), r, r.__traceback__)
+    def _connect(self):
+        self.log.debug(f'Trying to connect to broker {self.config["host"]}')
+        self._mqtt.connect(self.config['host'])
 
-    async def start(self):
-        """
-        Start the mqtt locally, and when it is connected send it back
-        """
+    def on_connect(self, client, userdata, flags, rc):
+        self.log.info(f'Connected to mqqt broker on {self.config["host"]}')
 
-        mqtt = aiomqtt.Client(self.loop)
-        mqtt.loop_start()
-
-        mqtt.on_message = self.on_message
-        mqtt.on_connect = lambda client, userdata, flags, rc: self.connected.set()
+    def _on_message(self, client, userdata, msg):
         try:
-            await mqtt.connect(self._host)
-        except:
-            self.log.error("Could not connect to %s", self._host)
-            self.loop.cancel()
-            raise
-        await self.connected.wait()
+            self.on_message(msg)
+        except Exception as e:
+            self.log.warning(
+                msg=f'Invalid message payload received on '
+                    f'topic {msg.topic}. Got error {e}')
 
-        self.log.info("Successfully connected to %s", self._config['host'])
-        for topic in self._subscriptions:
-            mqtt.subscribe(topic)
+    def on_message(self, msg) -> None:
+        self.log.debug(f'received {msg = }')
+        raise NotImplementedError()
 
-        self._mqtt = mqtt
-        while self._mqtt_queue:
-            topic, msg = self._mqtt_queue.pop(0)
-            self.log.debug("Topic: %s", topic)
-            self._mqtt.publish(topic, msg)
-
-        # Now we have mqtt available!
-        self._mqtt = mqtt
-
-    async def message_processing(self):
-        while True:
-            try:
-                (client, userdata, msg) = await self._queue.get()
-                # is called when a message is received
-                try:
-                    payload = msg.payload.decode('utf-8')
-                except UnicodeDecodeError:
-                    continue
-
-                try:
-                    futures = self._subscriptions[msg.topic]
-                except KeyError:
-                    # Received unknown message - this is strange, log and ignore
-                    self.log.info("Received unsubscribed message on %s with content: %s"%(
-                        msg.topic, msg.payload))
-
-                try:
-                    payloadobj = json.loads(payload)
-                except json.JSONDecodeError:
-                    self.log.info("Invalid json received: %s"%payload)
-                    continue
-                except:
-                    continue
-
-                try:
-                    await asyncio.gather(*[fut(client, payloadobj, msg) for fut in futures])
-                except Exception:
-                    traceback.print_exc()
-                    continue
-            except asyncio.CancelledError:
-                break
-
-            except Exception:
-                traceback.print_exc()
-                continue
-
-    def on_message(self, client, userdata, msg):
-        self._queue.put_nowait((client, userdata, msg))
-
-
-    def config(self, module):
+    def _load_config(self, module: str, not_found_ok=False) -> Dict:
         """
         Load a config from the pile of configs ( usually in /etc/hauptbahnhof/*.conf )
         """
-        with io.open('%s/%s.conf'%(self._configbase, module), 'r') as f:
-            return libconf.load(f)
+        try:
+            with open(f'{self._configbase}/{module}.json', 'r') as f:
+                self.config.update(json.load(f))
+                return self.config
+        except FileNotFoundError as e:
+            if not_found_ok:
+                return self.config
+            raise e
 
-    def subscribe(self, topic, coroutine):
+    def subscribe(self, topic: str, callback: Optional[Callable] = None) -> None:
         """
         Subscribe to topic
         """
-        try:
-            self._subscriptions[topic].append(coroutine)
-        except KeyError:
-            self._subscriptions[topic] = [coroutine]
+        self._mqtt.subscribe(topic)
+        if callback:
+            self._mqtt.message_callback_add(topic, callback)
+        self.log.info(f'subscribed to topic {topic}')
 
-        if self._mqtt:
-            self._mqtt.subscribe(topic)
-
-    async def publish(self, topic, message):
+    def publish(self, topic: str, msg: Union[str, int, float, Dict]) -> None:
         """
         Publish a message on the given topic
         """
-        jsonmsg = json.dumps(message)
-
-        # Maybe the system is not already online?
-        if self._mqtt:
-            await self._mqtt.publish(topic, jsonmsg).wait_for_publish()
+        if isinstance(msg, dict):
+            try:
+                payload = json.dumps(msg)
+            except JSONDecodeError as e:
+                self.log.error(
+                    msg=f'Got unserializable json dict when trying to'
+                        f'send msg to topic {topic}.')
+                return
+            self._mqtt.publish(topic, payload)
         else:
-            self._mqtt_queue.append((topic, jsonmsg))
-
-    def mqtt(self):
-        """
-        Get the underlying mqtt object. For debug use only!
-        """
-        return self._mqtt
+            self._mqtt.publish(topic, msg)

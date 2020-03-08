@@ -1,42 +1,45 @@
-import asyncio
-import subprocess
+import json
 import re
+import subprocess
+from json import JSONDecodeError
 
 from hauptbahnhof import Hauptbahnhof
 
-class MPD:
+
+class MPD(Hauptbahnhof):
     """
     Implement Interfacing to a locally running mpd server
     """
 
-    def __init__(self, loop=None):
-        if not loop:
-            loop = asyncio.get_event_loop()
+    def __init__(self):
+        super().__init__('mpd')
 
-        self.loop = loop
-        self.hbf = Hauptbahnhof("mpd", loop)
-        self.hbf.subscribe('/haspa/music/control', self.command_control)
-        self.hbf.subscribe('/haspa/music/song', self.command_song)
+    def on_connect(self, client, userdata, flags, rc):
+        super().on_connect(client, userdata, flags, rc)
+        self.subscribe('/haspa/music/control', self.command_control)
+        self.subscribe('/haspa/music/song', self.command_song)
 
+    def command_control(self, client, userdata, msg):
+        try:
+            message = json.loads(msg.payload)
+        except JSONDecodeError:
+            self.log.warn(f'malformed msg on topic {msg.topic}: {msg.payload}')
+            return
 
-    async def teardown(self):
-        await self.hbf.teardown()
-
-    async def command_control(self, client, message, _):
         if 'play' in message:
             if message['play']:
-                self.hbf.log.info("Starting music")
+                self.log.info("Starting music")
                 subprocess.call(['mpc', 'play'])
             else:
-                self.hbf.log.info("Stopping music")
+                self.log.info("Stopping music")
                 subprocess.call(['mpc', 'pause'])
         if 'volume' in message:
             p = re.compile(r'^[-+]?[0-9]{3}$')
             if p.match(message['volume']):
-                self.hbf.log.info("adjusting volume")
+                self.log.info("adjusting volume")
                 subprocess.call(['mpc', 'volume', message['volume']])
             else:
-                self.hbf.log.info("Will not parse volume: %s", message['volume'])
+                self.log.info("Will not parse volume: %s", message['volume'])
 
-    async def command_song(self, client, message, _):
+    async def command_song(self, client, userdata, msg):
         pass

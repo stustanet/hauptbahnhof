@@ -12,6 +12,9 @@ auto-save-list
 tramp
 .\#*
 
+# Jetbrains
+.idea
+
 # Org-mode
 .org-id-locations
 *_archive

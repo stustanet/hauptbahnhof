@@ -1,36 +1,22 @@
-import paho.mqtt.client as mqtt
 import json
 
-# maximum recursion depth in translation
-MAX_TTL=5
+from hauptbahnhof import Hauptbahnhof
 
-class Babel:
+# maximum recursion depth in translation
+MAX_TTL = 5
+
+
+class Babel(Hauptbahnhof):
     def __init__(self, config="/etc/hauptbahnhof/realms.json"):
-        with open(config) as cfgfile:
-            if not self.parse_config(cfgfile):
-                raise RuntimeError("Error in config.")
+        super().__init__('babel')
+        self._load_config('babel')
         self.dfnode_state = {}
 
-        self.mqtt = mqtt.Client()
-        self.mqtt.on_message = self.on_message
-        self.mqtt.on_connect = lambda mqtt, obj, flags, rc: \
-            self.subscribe_to_config(self.config)
-        self.mqtt.on_message = self.on_message
-        #self.mqtt.on_log = self.on_log
+    def on_connect(self, client, userdata, flags, rc):
+        super().on_connect(client, userdata, flags, rc)
+        self.subscribe_to_config()
 
-        self.connect()
-
-    def connect(self):
-        self.mqtt.connect("knecht.stusta.de", 1883)
-
-    def on_log(self, mqttc, obj, level, string):
-        print("mqtt: ", string)
-
-    def run(self):
-        self.mqtt.loop_forever()
-
-    def parse_config(self, config):
-        self.config = json.load(config)
+    def parse_config(self):
 
         # now process every path in the final translation result if it is parsable
         success = True
@@ -45,24 +31,29 @@ class Babel:
                         cfg = self.topicconfig(target)
                     except KeyError:
                         success = False
-                        print("Cannot translate output path: ", target, "for translating from ", source)
+                        self.log.error(f"Cannot translate output path: "
+                                       f"{target} for translating from {source}")
                         continue
                     try:
                         if cfg['type'] == "dfnode":
-                            _ = cfg['topic'] # require topic
-                            _ = cfg['espid'] # require espid
-                            index = cfg['index'] # 0 <= index < 8
+                            _ = cfg['topic']  # require topic
+                            _ = cfg['espid']  # require espid
+                            index = cfg['index']  # 0 <= index < 8
                             if int(index) < 0 or int(index) >= 8:
-                                print("index must be between (including) 0 and (excluding) 8")
+                                self.log.error(
+                                    "index must be between (including) 0 "
+                                    "and (excluding) 8")
                                 success = False
                         elif cfg['type'] == "delock":
-                            _ = cfg['topic'] # require topic
+                            _ = cfg['topic']  # require topic
 
                     except KeyError as e:
-                        print("could not find expected element", e, "in path ", target)
+                        self.log.error(
+                            f"could not find expected "
+                            f"element {e} in path {target}")
                         success = False
                     except ValueError as e:
-                        print("could not convert to int", e)
+                        self.log.error(f"could not convert to int {e}")
                         success = False
 
         return success
@@ -76,36 +67,32 @@ class Babel:
                 return [path]
         return data
 
-    def subscribe_to_config(self, config):
-        try:
-            print("Connected")
-            # subscribe to all basechannels
-            baseconfig = self.make_baseconfig_tree(config['basechannels'], "")
+    def subscribe_to_config(self):
+        baseconfig = self.make_baseconfig_tree(self.config['basechannels'], "")
 
-            # subscribe to all translated topics
-            baseconfig += config['translation'].keys()
-            print("Subcribing to topics:\n\t", "\n\t".join(baseconfig))
-            self.mqtt.subscribe([
-                (topic, 0) for topic in baseconfig])
-        except Exception as e:
-            print('subscribe', e)
+        # subscribe to all translated topics
+        baseconfig += self.config['translation'].keys()
+        self.log.info("Subcribing to topics: " + ", ".join(baseconfig))
+        self._mqtt.subscribe([(topic, 0) for topic in baseconfig])
 
-    def on_message(self, mqtt, userdata, msg):
-        print("msg", msg.topic, ":", msg.payload)
+    def on_message(self, msg):
+        self.log.debug(f"msg {msg.topic}: {msg.payload}")
         try:
             # TODO sanitize Payload:
             # has to be 0 - 100 integer or string
             payload = int(msg.payload)
             self.handle_message(msg.topic, payload, MAX_TTL)
         except Exception as e:
-            print('on_message', e)
+            self.log.warn(
+                f'Received invalid payload in topic {msg.topic}.'
+                f'Got error {e}.')
 
     def handle_message(self, topic, payload, ttl):
         if ttl <= 0:
             raise RuntimeError("ttl exceeded")
         if topic in self.config['translation']:
             for subtopic in self.config['translation'][topic]:
-                self.handle_message(subtopic, payload, ttl-1)
+                self.handle_message(subtopic, payload, ttl - 1)
         else:
             self.send_message(topic, payload)
 
@@ -117,7 +104,7 @@ class Babel:
         elif cfg['type'] == "delock":
             self.send_delock(cfg, topic, payload)
         else:
-            print("Config had unknown type", cfg['type'])
+            self.log.warn(f"Config had unknown type {cfg['type']}")
 
     def topicconfig(self, topic):
         try:
@@ -136,20 +123,20 @@ class Babel:
 
         self.dfnode_state[cfg['topic']][int(cfg['index'])] = payload
 
-        #print("Sending ", self.dfnode_state[cfg['topic']], "to", cfg['topic'])
+        # print("Sending ", self.dfnode_state[cfg['topic']], "to", cfg['topic'])
 
         payload = {cfg['espid']: self.dfnode_state[cfg['topic']]}
-        self.mqtt.publish(cfg['topic'], json.dumps(payload))
-
+        self.publish(cfg['topic'], json.dumps(payload))
 
     def send_delock(self, cfg, topic, payload):
         msg = "OFF" if payload == 0 else "ON"
-        self.mqtt.publish(cfg['topic'], msg)
+        self.publish(cfg['topic'], msg)
 
 
 def test():
     babel = Babel(config="./config.json")
     babel.run()
+
 
 if __name__ == "__main__":
     test()

@@ -1,58 +1,51 @@
-import asyncio
+import json
+import subprocess
+from json import JSONDecodeError
 
 from hauptbahnhof import Hauptbahnhof
 
-class NSA:
+
+class NSA(Hauptbahnhof):
     """
     Scan the local hackerspace network for new and unknown devices to send back a result
     """
 
-    def __init__(self, loop=None):
-        if not loop:
-            loop = asyncio.get_event_loop()
+    def __init__(self):
+        super().__init__('nsa')
+        try:
+            self._load_config('arplist')
+        except FileNotFoundError as e:
+            self.log.error('no arplist found')
+            self.config = {}
 
-        self.loop = loop
-        self.hbf = Hauptbahnhof("nsa", loop)
-        self.hbf.subscribe('/haspa/nsa/scan', self.command_scan)
+    def on_connect(self, client, userdata, flags, rc):
+        super().on_connect(client, userdata, flags, rc)
+        self.subscribe('/haspa/nsa/scan', self.command_scan)
 
-    async def teardown(self):
-        """
-        Clean up your stuff...
-        """
-        await self.hbf.teardown()
-
-    async def command_scan(self, client, message, _):
+    def command_scan(self, client, userdata, msg):
         """
         space.get_number_of_network_devices() -> int
         Return the number of non-stationary, connected network devices.
         """
         try:
-            cfg = self.hbf.config("arplist")
-        except FileNotFoundError as exc:
-            self.hbf.log.warning("Coult not find config:%s", str(exc))
-            cfg = {}
+            message = json.loads(msg.payload)
+        except JSONDecodeError:
+            self.log.warn(f'malformed msg on topic {msg.topic}: {msg.payload}')
+            return
 
-        known_devices = []
-        try:
-            known_devices = message['blacklist']
-        except (KeyError, TypeError):
-            known_devices = []
-
-        try:
-            known_devices += cfg['spacedevices']
-        except KeyError:
-            self.hbf.log.warning("You might want to configure space devices")
+        known_devices = message.get('blacklist', [])
+        known_devices += self.config.get('spacedevices', [])
 
         # TODO use util/arp-scan
-        proc = await asyncio.create_subprocess_exec(
-            *['arp-scan', cfg['space_network']],
-            stdout=asyncio.subprocess.PIPE,
-            loop=self.loop)
+        proc = subprocess.run(
+            ['arp-scan', self.config['space_network']],
+            stdout=subprocess.PIPE,
+        )
 
-        output, _ = await proc.communicate()
-        for line in output.decode('utf8').split('\n'):
-            self.hbf.log.debug(line)
-        output = output.decode('utf8').split()
+        output = proc.stdout
+        for line in output.decode('utf-8').split('\n'):
+            self.log.debug(line)
+        output = output.decode('utf-8').split()
 
         dev_list = []
 
@@ -61,4 +54,4 @@ class NSA:
                 if line not in known_devices:
                     dev_list.append(line)
 
-        await self.hbf.publish('/haspa/nsa/result', {'count': len(dev_list)})
+        self.publish('/haspa/nsa/result', {'count': len(dev_list)})

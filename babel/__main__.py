@@ -1,5 +1,5 @@
-import asyncio
 from babel.babel import Babel
+
 
 def main():
     """
@@ -7,6 +7,7 @@ def main():
     """
     babel = Babel()
     babel.run()
+
 
 if __name__ == "__main__":
     main()
