@@ -49,7 +49,7 @@ class Hackerman(Hauptbahnhof):
         else:
             self.log.warn(f"Haspa state undetermined: {message['haspa']}")
 
-    async def command_action(self, client, userdata, msg):
+    def command_action(self, client, userdata, msg):
         """ Handle actions like alarm or party """
         try:
             message = json.loads(msg.payload)
@@ -57,92 +57,95 @@ class Hackerman(Hauptbahnhof):
             self.log.warn(f'malformed msg on topic {msg.topic}: {msg.payload}')
             return
 
-        if 'action' in message:
-            if message['action'] == 'alarm':
-                self.log.info("Performing alarm...")
-                self.publish('/haspa/licht/alarm', 1)
-                time.sleep(2)
-                self.publish('/haspa/licht/alarm', 0)
+        if 'action' not in message:
+            self.log.warn(f'got invalid action msg: {message}')
+            return
 
-            elif message['action'] == 'strobo':
-                self.log.info("Performing strobo...")
-                for i in range(100):
-                    self.publish('/haspa/licht/c', 0)
-                    time.sleep(0.05)
-                    self.publish('/haspa/licht/c', 1023)
-                    time.sleep(0.03)
+        if message['action'] == 'alarm':
+            self.log.info("Performing alarm...")
+            self.publish('/haspa/licht/alarm', 1)
+            time.sleep(2)
+            self.publish('/haspa/licht/alarm', 0)
 
-            elif message['action'] == 'party':
-                self.log.info("Performing party...")
-                self.publish('/haspa/licht', 0)
+        elif message['action'] == 'strobo':
+            self.log.info("Performing strobo...")
+            for i in range(100):
                 self.publish('/haspa/licht/c', 0)
-                self.publish('/haspa/licht/w', 0)
-                delay = 0.05
+                time.sleep(0.05)
+                self.publish('/haspa/licht/c', 1023)
+                time.sleep(0.03)
 
-                sounds = [
-                    # ('56', 3.5), # führer
-                    ('97', 4.7),  # sonnenschein
-                    ('63', 5),  # epische musik
-                    ('110', 3.7),  # dota
-                    ('113', 9),  # skrillex
-                ]
+        elif message['action'] == 'party':
+            self.log.info("Performing party...")
+            self.publish('/haspa/licht', 0)
+            self.publish('/haspa/licht/c', 0)
+            self.publish('/haspa/licht/w', 0)
+            delay = 0.05
 
-                sound = random.choice(sounds)
+            sounds = [
+                # ('56', 3.5), # führer
+                ('97', 4.7),  # sonnenschein
+                ('63', 5),  # epische musik
+                ('110', 3.7),  # dota
+                ('113', 9),  # skrillex
+            ]
 
-                if sound[0] == '97':
-                    await asyncio.sleep(1)
-                    for i in range(0, 300):
-                        if i == 100:
-                            requests.get("https://bot.stusta.de/set/" + sound[0])
+            sound = random.choice(sounds)
 
-                        self.publish('/haspa/licht/w', i * 10 / 3)
+            if sound[0] == '97':
+                await asyncio.sleep(1)
+                for i in range(0, 300):
+                    if i == 100:
+                        requests.get("https://bot.stusta.de/set/" + sound[0])
+
+                    self.publish('/haspa/licht/w', i * 10 / 3)
+                    time.sleep(0.01)
+
+            elif sound[0] == '113':
+                requests.get("https://bot.stusta.de/set/" + sound[0])
+                for i in range(2):
+                    time.sleep(1.5)
+                    self.publish('/haspa/licht/1/c', 1023)
+                    self.publish('/haspa/licht/1/c', 1023)
+                    self.publish('/haspa/licht/alarm', 1)
+
+                    time.sleep(0.01)
+                    self.publish('/haspa/licht/c', 0)
+
+                    for o in range(40):
+                        self.publish('/haspa/licht/c', 20 * o)
                         time.sleep(0.01)
 
-                elif sound[0] == '113':
-                    requests.get("https://bot.stusta.de/set/" + sound[0])
-                    for i in range(2):
-                        time.sleep(1.5)
+                    self.publish('/haspa/licht/c', 0)
+
+                    # time.sleep(1.49)
+                    for o in range(20):
                         self.publish('/haspa/licht/1/c', 1023)
-                        self.publish('/haspa/licht/1/c', 1023)
-                        self.publish('/haspa/licht/alarm', 1)
-
-                        time.sleep(0.01)
-                        self.publish('/haspa/licht/c', 0)
-
-                        for o in range(40):
-                            self.publish('/haspa/licht/c', 20 * o)
-                            time.sleep(0.01)
-
-                        self.publish('/haspa/licht/c', 0)
-
-                        # time.sleep(1.49)
-                        for o in range(20):
-                            self.publish('/haspa/licht/1/c', 1023)
-                            self.publish('/haspa/licht/3/c', 0)
-
-                            time.sleep(0.01)
-
-                            self.publish('/haspa/licht/1/c', 0)
-                            self.publish('/haspa/licht/3/c', 1023)
-                            time.sleep(0.01)
-
-                else:
-                    requests.get("https://bot.stusta.de/set/" + sound[0])
-                    for _ in range(int(sound[1] / (delay * 4))):
                         self.publish('/haspa/licht/3/c', 0)
-                        self.publish('/haspa/licht/1/c', 1023)
-                        time.sleep(delay)
+
+                        time.sleep(0.01)
 
                         self.publish('/haspa/licht/1/c', 0)
-                        self.publish('/haspa/licht/4/c', 1023)
-                        time.sleep(delay)
-
-                        self.publish('/haspa/licht/4/c', 0)
-                        self.publish('/haspa/licht/2/c', 1023)
-                        time.sleep(delay)
-
-                        self.publish('/haspa/licht/2/c', 0)
                         self.publish('/haspa/licht/3/c', 1023)
-                        time.sleep(delay)
+                        time.sleep(0.01)
 
-                self.publish('/haspa/licht', 300)
+            else:
+                requests.get("https://bot.stusta.de/set/" + sound[0])
+                for _ in range(int(sound[1] / (delay * 4))):
+                    self.publish('/haspa/licht/3/c', 0)
+                    self.publish('/haspa/licht/1/c', 1023)
+                    time.sleep(delay)
+
+                    self.publish('/haspa/licht/1/c', 0)
+                    self.publish('/haspa/licht/4/c', 1023)
+                    time.sleep(delay)
+
+                    self.publish('/haspa/licht/4/c', 0)
+                    self.publish('/haspa/licht/2/c', 1023)
+                    time.sleep(delay)
+
+                    self.publish('/haspa/licht/2/c', 0)
+                    self.publish('/haspa/licht/3/c', 1023)
+                    time.sleep(delay)
+
+            self.publish('/haspa/licht', 300)
