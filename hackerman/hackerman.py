@@ -65,6 +65,7 @@ class Hackerman(Hauptbahnhof):
                 self.publish('/haspa/licht/alarm', 0)
 
             elif message['action'] == 'strobo':
+                self.log.info("Performing strobo...")
                 for i in range(100):
                     self.publish('/haspa/licht/c', 0)
                     time.sleep(0.05)
@@ -72,6 +73,7 @@ class Hackerman(Hauptbahnhof):
                     time.sleep(0.03)
 
             elif message['action'] == 'party':
+                self.log.info("Performing party...")
                 self.publish('/haspa/licht', 0)
                 self.publish('/haspa/licht/c', 0)
                 self.publish('/haspa/licht/w', 0)
