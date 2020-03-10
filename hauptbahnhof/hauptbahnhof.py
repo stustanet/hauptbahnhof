@@ -30,7 +30,7 @@ class Hauptbahnhof:
         logformat = '%(name)s | %(levelname)5s | %(message)s'
         logging.basicConfig(format=logformat)
         self.log = logging.getLogger(name)
-        self.log.setLevel(logging.DEBUG)
+        self.log.setLevel(logging.INFO)
         self._mqtt.enable_logger(self.log)
 
     def run(self):
