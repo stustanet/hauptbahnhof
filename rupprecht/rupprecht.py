@@ -8,9 +8,9 @@ import time
 import sys
 
 
-LED_R = 14
-LED_G = 12
-LED_B = 13
+LED_R = 13
+LED_G = 14
+LED_B = 12
 BTN_STATUS = 5
 BTN_VOL_PLUS = 2
 BTN_VOL_MINUS = 4
@@ -36,14 +36,14 @@ class Rupprecht:
         self.in_pins = [
             Pin(BTN_STATUS, Pin.IN, Pin.PULL_UP),
             Pin(BTN_PLAY, Pin.IN, Pin.PULL_UP),
+            Pin(BTN_VOL_MINUS, Pin.IN, Pin.PULL_UP),
             Pin(BTN_VOL_PLUS, Pin.IN, Pin.PULL_UP),
-            Pin(BTN_VOL_MINUS, Pin.IN, Pin.PULL_UP)
         ]
         self.bounces = [0, 0, 0, 0]
         self.curr_pin_states = [pin.value() for pin in self.in_pins]
 
         self.pin_led_r.freq(1000)
-        self.set_led(0, 0, 1023)
+        self.set_led(1023, 0, 0)
 
         print("GC After boot", gc.mem_free())
 
@@ -99,35 +99,40 @@ class Rupprecht:
         self.pin_led_b.duty(b)
 
     def pin_changed(self, index):
-        print('[*] Pin changed', index)
+        # print('[*] Pin changed', index)
         if index == 0:
             self.update_status()
         elif index == 1 and self.curr_pin_states[index] == 0:
+            print('[*] toggle music')
             payload = json.dumps({
-                'play': True
+                'toggle': True
             })
-            #self.mqtt.publish(self.config['music_topic'], payload)
+            self.mqtt.publish(self.config['music_topic'], payload)
         elif index == 2 and self.curr_pin_states[index] == 0:
+            print('[*] volume +5')
             payload = json.dumps({
                 'volume': '+5'
             })
-            #self.mqtt.publish(self.config['music_topic'], payload)
+            self.mqtt.publish(self.config['music_topic'], payload)
         elif index == 3 and self.curr_pin_states[index] == 0:
+            print('[*] volume -5')
             payload = json.dumps({
                 'volume': '-5'
             })
-            #self.mqtt.publish(self.config['music_topic'], payload)
+            self.mqtt.publish(self.config['music_topic'], payload)
 
     def update_status(self):
         """change space status, 0 corresponds to open, 1 to closed"""
         payload = json.dumps({
-            'haspa': 'open' if self.curr_pin_states[0] == 0 else 'closed'
+            'haspa': 'open' if self.curr_pin_states[0] == 1 else 'closed'
         })
-        if self.curr_pin_states[0] == 0:
-            self.set_led(0, 1023, 0)
+        if self.curr_pin_states[0] == 1:
+            print('[!] Haspa open')
+            self.set_led(0, 700, 0)
         else:
-            self.set_led(1023, 0, 0)
-        #self.mqtt.publish(self.config['status_topic'], payload)
+            print('[!] Haspa closed')
+            self.set_led(0, 0, 100)
+        self.mqtt.publish(self.config['status_topic'], payload)
 
     def main(self):
         self.init()
