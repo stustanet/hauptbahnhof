@@ -41,5 +41,5 @@ class MPD(Hauptbahnhof):
             else:
                 self.log.info("Will not parse volume: %s", message['volume'])
 
-    async def command_song(self, client, userdata, msg):
+    def command_song(self, client, userdata, msg):
         pass

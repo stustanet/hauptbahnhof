@@ -1,4 +1,3 @@
-import asyncio
 import json
 import time
 from json import JSONDecodeError
@@ -93,7 +92,7 @@ class Hackerman(Hauptbahnhof):
             sound = random.choice(sounds)
 
             if sound[0] == '97':
-                await asyncio.sleep(1)
+                time.sleep(1)
                 for i in range(0, 300):
                     if i == 100:
                         requests.get("https://bot.stusta.de/set/" + sound[0])
