@@ -53,7 +53,7 @@ class Hauptbahnhof:
                     f'topic {msg.topic}. Got error {e}')
 
     def on_message(self, msg) -> None:
-        self.log.debug(f'received {msg = }')
+        self.log.debug(f'received msg: {msg}')
         raise NotImplementedError()
 
     def _load_config(self, module: str, not_found_ok=False) -> Dict:
