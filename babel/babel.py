@@ -3,11 +3,11 @@ import json
 from hauptbahnhof import Hauptbahnhof
 
 # maximum recursion depth in translation
-MAX_TTL = 5
+MAX_TTL = 15
 
 
 class Babel(Hauptbahnhof):
-    def __init__(self, config="/etc/hauptbahnhof/realms.json"):
+    def __init__(self):
         super().__init__('babel')
         self._load_config('babel')
         self.dfnode_state = {}
