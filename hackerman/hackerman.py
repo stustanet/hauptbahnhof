@@ -36,7 +36,15 @@ class Hackerman(Hauptbahnhof):
             return
 
         if message['haspa'] in ['open', 'offen', 'auf']:
-            self.publish('/haspa/licht', 400)
+            # set the best of all possible light settings
+            self.publish('/haspa/licht/w', 400)
+            self.publish('/haspa/licht/c', 100)
+            self.publish('/haspa/licht/tisch', 1)
+            self.publish('/haspa/tisch/r', 160)
+            self.publish('/haspa/tisch/g', 100)
+            self.publish('/haspa/tisch/b', 70)
+            self.publish('/haspa/tisch/w', 90)
+
             self.publish('/haspa/music/control', {
                 'play': True
             })

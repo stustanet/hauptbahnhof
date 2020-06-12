@@ -88,6 +88,14 @@ class Babel(Hauptbahnhof):
                 f'Got error {e}.')
 
     def handle_message(self, topic, payload, ttl):
+        # Handle /haspa/licht = 0 messages seperately, and turn _everything_ off
+        if topic == '/haspa/licht' and payload == 0:
+            # send a 0 message to every configured base channel
+            baseconfig = self.make_baseconfig_tree(self.config['basechannels'], "")
+            for channel in baseconfig:
+                self.send_message(channel, payload)
+            return
+
         if ttl <= 0:
             raise RuntimeError("ttl exceeded")
         if topic in self.config['translation']:
