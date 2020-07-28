@@ -1,14 +1,13 @@
 [Unit]
 Description=Hauptbahnhof %i-Module
-After=network-online.target
+After=network-online.target mosquitto.service
 Requires=mosquitto.service
-Before=hauptbahnhof.service
 
 [Service]
 Type=simple
 User=hauptbahnhof
-WorkingDirectory=/usr/local/bin/hauptbahnhof
-ExecStart=/usr/local/bin/hauptbahnhof/venv/bin/python3 -m %i
+WorkingDirectory=/srv/hauptbahnhof/repo
+ExecStart=/srv/hauptbahnhof/venv/bin/python3 -m %i
 
 
 [Install]

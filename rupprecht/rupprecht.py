@@ -18,9 +18,9 @@ BTN_PLAY = 0
 
 
 CONFIG = {
-    'mqtt_server': '192.168.13.37',
-    'status_topic': '/haspa/status',
-    'music_topic': '/haspa/music/control'
+    "mqtt_server": "192.168.13.37",
+    "status_topic": "/haspa/status",
+    "music_topic": "/haspa/music/control",
 }
 
 
@@ -53,20 +53,20 @@ class Rupprecht:
         sta_if = network.WLAN(network.STA_IF)
 
         while not sta_if.isconnected():
-            print('[?] Waiting for network connection...')
+            print("[?] Waiting for network connection...")
             time.sleep(0.2)
 
         # Network is available
         print("[*] IP address: ", sta_if.ifconfig()[0])
 
     def connect(self):
-        self.mqtt = MQTTClient('rupprecht', self.config['mqtt_server'])
+        self.mqtt = MQTTClient("rupprecht", self.config["mqtt_server"])
         self.mqtt.set_callback(self.on_message)
         self.mqtt.connect()
 
     def on_message(self, topic, msg):
         try:
-            msg = msg.decode('utf-8')
+            msg = msg.decode("utf-8")
             data = json.loads(msg)
         except:
             print("[!] Json error: ", msg)
@@ -103,36 +103,30 @@ class Rupprecht:
         if index == 0:
             self.update_status()
         elif index == 1 and self.curr_pin_states[index] == 0:
-            print('[*] toggle music')
-            payload = json.dumps({
-                'toggle': True
-            })
-            self.mqtt.publish(self.config['music_topic'], payload)
+            print("[*] toggle music")
+            payload = json.dumps({"toggle": True})
+            self.mqtt.publish(self.config["music_topic"], payload)
         elif index == 2 and self.curr_pin_states[index] == 0:
-            print('[*] volume +5')
-            payload = json.dumps({
-                'volume': '+5'
-            })
-            self.mqtt.publish(self.config['music_topic'], payload)
+            print("[*] volume +5")
+            payload = json.dumps({"volume": "+5"})
+            self.mqtt.publish(self.config["music_topic"], payload)
         elif index == 3 and self.curr_pin_states[index] == 0:
-            print('[*] volume -5')
-            payload = json.dumps({
-                'volume': '-5'
-            })
-            self.mqtt.publish(self.config['music_topic'], payload)
+            print("[*] volume -5")
+            payload = json.dumps({"volume": "-5"})
+            self.mqtt.publish(self.config["music_topic"], payload)
 
     def update_status(self):
         """change space status, 0 corresponds to open, 1 to closed"""
-        payload = json.dumps({
-            'haspa': 'open' if self.curr_pin_states[0] == 1 else 'closed'
-        })
+        payload = json.dumps(
+            {"haspa": "open" if self.curr_pin_states[0] == 1 else "closed"}
+        )
         if self.curr_pin_states[0] == 1:
-            print('[!] Haspa open')
+            print("[!] Haspa open")
             self.set_led(0, 700, 0)
         else:
-            print('[!] Haspa closed')
+            print("[!] Haspa closed")
             self.set_led(0, 0, 100)
-        self.mqtt.publish(self.config['status_topic'], payload)
+        self.mqtt.publish(self.config["status_topic"], payload)
 
     def main(self):
         self.init()
@@ -151,7 +145,7 @@ class Rupprecht:
                 # filter out and allow keyboard interrupts
                 raise
             except Exception as exc:
-                #raise e # For debug times
+                # raise e # For debug times
                 sys.print_exception(exc)
                 print("Sleeping for 10 seconds")
                 time.sleep(10)
@@ -165,5 +159,5 @@ def main():
     rupprecht.main()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

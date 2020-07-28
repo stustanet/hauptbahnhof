@@ -4,9 +4,11 @@ from hauptbahnhof import Hauptbahnhof
 from nsa.nsa import NSA
 
 
-messages = asyncio.Queue()
+messages: asyncio.Queue = asyncio.Queue()
+
+
 async def on_message(client, message, _):
-    print("Got message: %s"%message)
+    print("Got message: %s" % message)
     await messages.put(message)
 
 
@@ -16,12 +18,12 @@ async def test(loop):
 
     await asyncio.sleep(2)
 
-    await testbf.publish("/haspa/nsa/scan", {}) # without blacklist
+    await testbf.publish("/haspa/nsa/scan", {})  # without blacklist
 
     # Now everythin should be set up
-    msg = await asyncio.wait_for(messages.get(), 10) # wait max 10 secs
+    msg = await asyncio.wait_for(messages.get(), 10)  # wait max 10 secs
 
-    if msg['count'] > 0:
+    if msg["count"] > 0:
         testbf.log.info("test successfull")
         return True
     else:
@@ -31,6 +33,7 @@ async def test(loop):
         await testbf.teardown()
     except asyncio.CancelledError:
         pass
+
 
 def main():
     loop = asyncio.get_event_loop()
@@ -44,5 +47,6 @@ def main():
     else:
         exit(1)
 
-if __name__=="__main__":
+
+if __name__ == "__main__":
     main()
