@@ -57,7 +57,7 @@ class Hauptbahnhof:
             try:
                 self._connect()
                 break
-            except ConnectionRefusedError as e:
+            except (ConnectionRefusedError, OSError) as e:
                 logging.error(
                     "Failed when trying initial connect to mqtt server: %s", e
                 )
@@ -118,7 +118,8 @@ class Hauptbahnhof:
 
     def publish(self, topic: str, msg: Union[str, int, float, Dict]) -> None:
         """
-        Publish a message on the given topic
+        Publish a message on the given topic, if passed a dict will
+        automatically serialize the payload as a json string.
         """
         if isinstance(msg, dict):
             try:
