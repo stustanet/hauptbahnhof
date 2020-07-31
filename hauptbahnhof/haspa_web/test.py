@@ -1,7 +1,7 @@
 import asyncio
 from hauptbahnhof import Hauptbahnhof
 
-from haspa_web.haspa import HaspaWeb
+from hauptbahnhof.haspa_web import HaspaWeb
 
 
 async def test(loop):

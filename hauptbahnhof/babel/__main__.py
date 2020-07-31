@@ -1,12 +1,12 @@
-from mpd.mpd import MPD
+from hauptbahnhof.babel.babel import Babel
 
 
 def main():
     """
     Actually start the shit
     """
-    mpd = MPD()
-    mpd.run()
+    babel = Babel()
+    babel.run()
 
 
 if __name__ == "__main__":

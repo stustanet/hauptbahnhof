@@ -1,7 +1,7 @@
 import asyncio
 from hauptbahnhof import Hauptbahnhof
 
-from mpd.mpd import MPD
+from hauptbahnhof.mpd.mpd import MPD
 
 
 async def test(loop):

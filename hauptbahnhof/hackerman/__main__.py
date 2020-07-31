@@ -1,4 +1,4 @@
-from hackerman.hackerman import Hackerman
+from hauptbahnhof.hackerman import Hackerman
 
 
 def main():

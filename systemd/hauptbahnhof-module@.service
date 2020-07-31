@@ -6,8 +6,7 @@ Requires=mosquitto.service
 [Service]
 Type=simple
 User=hauptbahnhof
-WorkingDirectory=/srv/hauptbahnhof/repo
-ExecStart=/srv/hauptbahnhof/venv/bin/python3 -m %i
+ExecStart=/usr/bin/python3 -m hauptbahnhof.%i
 
 
 [Install]

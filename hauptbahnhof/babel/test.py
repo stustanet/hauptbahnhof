@@ -1,7 +1,7 @@
 import asyncio
 from hauptbahnhof import Hauptbahnhof
 
-from babel.babel import Babel
+from hauptbahnhof.babel.babel import Babel
 
 
 messages: asyncio.Queue = asyncio.Queue()

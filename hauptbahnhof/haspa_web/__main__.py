@@ -1,4 +1,4 @@
-from haspa_web.haspa import HaspaWeb
+from hauptbahnhof.haspa_web import HaspaWeb
 
 
 def main():
