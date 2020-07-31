@@ -1,5 +1,6 @@
 import React, {Component} from 'react';
-import FloorPlan from '../floor_plan.svg';
+import { ReactComponent as FloorPlan } from '../floor_plan.svg';
+import './Haspa.css';
 
 class Haspa extends Component {
 
@@ -30,8 +31,8 @@ class Haspa extends Component {
                         </div>
                     </div>
                     <div className="col-6">
-                        <img src={FloorPlan} alt="Floor Plan" style={{width: '100%'}}/>
-                        {/*<FloorPlan/>*/}
+                        {/*<img src={FloorPlan} alt="Floor Plan" style={{width: '100%'}}/>*/}
+                        <FloorPlan preserveAspectRatio="xMinYMin" width="100%"/>
                     </div>
                 </div>
             </div>
