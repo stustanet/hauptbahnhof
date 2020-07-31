@@ -9,22 +9,19 @@ import mqtt from "mqtt";
 const mqttURL = 'ws://knecht.stusta.de:9001';
 
 class App extends React.Component {
-    constructor(props) {
-        super(props);
-
-        this.state = {
-            client: null,
-            connected: false,
-            loading: true
-        }
+    state = {
+        client: null,
+        connected: false,
+        loading: true
     }
     componentDidMount() {
         this.connectMQTT();
     }
 
-    authenticate(username, password) {
+    authenticate = (username, password) => {
         localStorage.setItem('username', username);
         localStorage.setItem('password', password);
+        this.setState({loading: true});
 
         this.setupClient(username, password);
     }
@@ -35,12 +32,12 @@ class App extends React.Component {
 
         if (username !== null && password !== null) {
             this.setupClient(username, password);
-            return true;
+        } else {
+            this.setState({loading: false});
         }
-        return false;
     }
 
-    setupClient(username, password) {
+    setupClient = (username, password) => {
         const options = {
             username: username,
             password: password,
@@ -67,10 +64,30 @@ class App extends React.Component {
             console.log(topic, message.toString());
         })
 
+        client.on('disconnect', () => {
+            console.log('disconnected');
+            this.setState({connected: false});
+        })
+
+        client.on('offline', () => {
+            console.log('offline');
+            this.setState({connected: false});
+        })
+
+        client.on('close', () => {
+            console.log('close');
+            this.setState({connected: false});
+        })
+
+        client.on('reconnect', () => {
+            console.log('reconnect');
+        })
+
         this.setState({client: client})
     }
 
-    publish(topic, message) {
+    publish = (topic, message) => {
+        this.state.client.publish(topic, String(message));
         console.log('publishing on topic', topic, message);
     }
 
@@ -82,11 +99,11 @@ class App extends React.Component {
         } else {
             if (this.state.connected) {
                 return (
-                    <Haspa publish={this.publish.bind(this)}/>
+                    <Haspa publish={this.publish}/>
                 );
             } else {
                 return (
-                    <Login authenticate={this.authenticate.bind(this)}/>
+                    <Login authenticate={this.authenticate}/>
                 );
             }
         }
