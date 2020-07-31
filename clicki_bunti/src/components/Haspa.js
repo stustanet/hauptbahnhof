@@ -1,5 +1,5 @@
 import React, {Component} from 'react';
-import {SliderPicker} from 'react-color'
+import {HuePicker} from 'react-color'
 import Slider from "rc-slider";
 import 'rc-slider/assets/index.css';
 
@@ -177,8 +177,7 @@ class Haspa extends Component {
                         <div className="mt-5">
                             {this.state.showRGB ?
                                 <>
-                                    <SliderPicker
-                                        color={this.state.color}
+                                    <HuePicker
                                         onChangeComplete={this.onSelectionRGBChange}
                                     />
                                     <hr/>
@@ -250,7 +249,7 @@ class Haspa extends Component {
                                         <span>Tisch 1</span>
                                         <button className="btn btn-outline-danger ml-1 float-right">off</button>
                                         <button className="btn btn-outline-success ml-1 float-right">on</button>
-                                        <SliderPicker
+                                        <HuePicker
                                             className="mt-4"
                                         />
                                         <Slider
@@ -258,13 +257,6 @@ class Haspa extends Component {
                                             className="mt-3"
                                             onAfterChange={(value) => {
                                                 this.onWarmChange("haspa", value)
-                                            }}
-                                        />
-                                        <Slider
-                                            className="mt-1"
-                                            max={1000}
-                                            onAfterChange={(value) => {
-                                                this.onColdChange("haspa", value)
                                             }}
                                         />
                                     </div>
@@ -272,7 +264,7 @@ class Haspa extends Component {
                                         <span>Terrasse</span>
                                         <button className="btn btn-outline-danger ml-1 float-right">off</button>
                                         <button className="btn btn-outline-success ml-1 float-right">on</button>
-                                        <SliderPicker
+                                        <HuePicker
                                             className="mt-4"
                                         />
                                         <Slider
@@ -280,13 +272,6 @@ class Haspa extends Component {
                                             max={1000}
                                             onAfterChange={(value) => {
                                                 this.onWarmChange("haspa", value)
-                                            }}
-                                        />
-                                        <Slider
-                                            className="mt-1"
-                                            max={1000}
-                                            onAfterChange={(value) => {
-                                                this.onColdChange("haspa", value)
                                             }}
                                         />
                                     </div>

@@ -10,7 +10,7 @@ class FloorPlan extends Component {
         e.preventDefault();
         const rect = e.target;
         if (rect.style["stroke"] === "rgba(0, 0, 0, 0.5)") {
-            rect.style["stroke"] = "#38ff00";
+            rect.style["stroke"] = "#0065ff";
         } else {
             rect.style["stroke"] = "rgba(0, 0, 0, 0.5)";
         }
