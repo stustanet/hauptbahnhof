@@ -23,28 +23,28 @@ class MPD(Hauptbahnhof):
         try:
             message = json.loads(msg.payload)
         except JSONDecodeError:
-            self.log.warning("malformed msg on topic %s: %s", msg.topic, msg.payload)
+            self.logger.warning("malformed msg on topic %s: %s", msg.topic, msg.payload)
             return
 
         if "play" in message:
             if message["play"]:
-                self.log.info("Starting music")
+                self.logger.info("Starting music")
                 subprocess.call(["mpc", "play"])
             else:
-                self.log.info("Stopping music")
+                self.logger.info("Stopping music")
                 subprocess.call(["mpc", "pause"])
         if "toggle" in message:
             if message["toggle"]:
-                self.log.info("Toggling music")
+                self.logger.info("Toggling music")
                 subprocess.call(["xdotool", "key", "XF86AudioPlay "])
 
         if "volume" in message:
             p = re.compile(r"^[-+]?[0-9]{3}$")
             if p.match(message["volume"]):
-                self.log.info("adjusting volume")
+                self.logger.info("adjusting volume")
                 subprocess.call(["mpc", "volume", message["volume"]])
             else:
-                self.log.info("Will not parse volume: %s", message["volume"])
+                self.logger.info("Will not parse volume: %s", message["volume"])
 
     def command_song(self, client, userdata, msg):
         pass

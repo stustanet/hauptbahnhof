@@ -15,7 +15,7 @@ class NSA(Hauptbahnhof):
         try:
             self._load_config("arplist")
         except FileNotFoundError:
-            self.log.error("no arplist found")
+            self.logger.error("no arplist found")
             self.config = {}
 
     def on_connect(self, client, userdata, flags, rc):
@@ -30,7 +30,7 @@ class NSA(Hauptbahnhof):
         try:
             message = json.loads(msg.payload)
         except JSONDecodeError:
-            self.log.warning("malformed msg on topic %s: %s", msg.topic, msg.payload)
+            self.logger.warning("malformed msg on topic %s: %s", msg.topic, msg.payload)
             return
 
         known_devices = message.get("blacklist", [])
@@ -43,7 +43,7 @@ class NSA(Hauptbahnhof):
 
         output = proc.stdout
         for line in output.decode("utf-8").split("\n"):
-            self.log.debug(line)
+            self.logger.debug(line)
         output = output.decode("utf-8").split()
 
         dev_list = []

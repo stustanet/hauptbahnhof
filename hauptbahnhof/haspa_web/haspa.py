@@ -30,16 +30,16 @@ class HaspaWeb(Hauptbahnhof):
         """ /haspa/status change detected """
         del client, userdata
         message = json.loads(mqttmsg.payload.decode("utf-8"))
-        self.log.info("Received: %s", message)
+        self.logger.info("Received: %s", message)
         if "haspa" in message:
             if message["haspa"] in ["open", "offen", "auf"]:
                 self.set_state(True)
             elif message["haspa"] in ["close", "zu", "closed"]:
                 self.set_state(False)
             else:
-                self.log.info("Haspa state undetermined: %s", message["haspa"])
+                self.logger.info("Haspa state undetermined: %s", message["haspa"])
         else:
-            self.log.warning("Invalid Message received")
+            self.logger.warning("Invalid Message received")
 
     def set_state(self, is_open):
         """

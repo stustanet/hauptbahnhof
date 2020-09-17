@@ -30,7 +30,7 @@ class Babel(Hauptbahnhof):
                     cfg = self.topicconfig(target)
                     if not cfg:
                         success = False
-                        self.log.error(
+                        self.logger.error(
                             "Cannot translate output path: "
                             "%s for translating from %s",
                             target,
@@ -40,7 +40,7 @@ class Babel(Hauptbahnhof):
 
                     if cfg["type"] == "dfnode":
                         if "topic" not in cfg or "espid" not in cfg:
-                            self.log.error(
+                            self.logger.error(
                                 "missing 'topic' or 'espid' in config %s", cfg
                             )
                             success = False
@@ -49,12 +49,12 @@ class Babel(Hauptbahnhof):
                         index: str = cfg["index"]  # 0 <= index < 8
 
                         if not index.isnumeric():
-                            self.log.error("cannot convert index to int: %s", index)
+                            self.logger.error("cannot convert index to int: %s", index)
                             success = False
                             continue
 
                         if int(index) < 0 or int(index) >= 8:
-                            self.log.error(
+                            self.logger.error(
                                 "index must be between (including) 0 "
                                 "and (excluding) 8"
                             )
@@ -62,7 +62,7 @@ class Babel(Hauptbahnhof):
                             continue
                     elif cfg["type"] == "delock":
                         if "topic" not in cfg:
-                            self.log.error("missing 'topic' in config %s", cfg)
+                            self.logger.error("missing 'topic' in config %s", cfg)
                             success = False
                             continue
 
@@ -82,18 +82,18 @@ class Babel(Hauptbahnhof):
 
         # subscribe to all translated topics
         base_config += self.config["translation"].keys()
-        self.log.info("Subcribing to topics: %s", ", ".join(base_config))
+        self.logger.info("Subcribing to topics: %s", ", ".join(base_config))
         self._mqtt.subscribe([(topic, 0) for topic in base_config])
 
     def on_message(self, msg):
-        self.log.debug(f"msg {msg.topic}: {msg.payload}")
+        self.logger.debug(f"msg {msg.topic}: {msg.payload}")
         try:
             # TODO sanitize Payload:
             # has to be 0 - 100 integer or string
             payload = int(msg.payload)
             self.handle_message(msg.topic, payload, MAX_TTL)
         except Exception as e:
-            self.log.warning(
+            self.logger.warning(
                 "Received invalid payload in topic %s. Got error %s.", msg.topic, e
             )
 
@@ -122,7 +122,7 @@ class Babel(Hauptbahnhof):
         elif cfg["type"] == "delock":
             self.send_delock(cfg, topic, payload)
         else:
-            self.log.warning("Config had unknown type %s", cfg["type"])
+            self.logger.warning("Config had unknown type %s", cfg["type"])
 
     def topicconfig(self, topic: str) -> Optional[Dict]:
         cfg = self.config["basechannels"]
@@ -131,7 +131,7 @@ class Babel(Hauptbahnhof):
                 continue
 
             if layer not in cfg:
-                self.log.error("Cannot find base channel %s", topic)
+                self.logger.error("Cannot find base channel %s", topic)
                 return None
 
             cfg = cfg[layer]

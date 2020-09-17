@@ -5,7 +5,7 @@ from json import JSONDecodeError
 import requests
 import random
 
-from hauptbahnhof import Hauptbahnhof
+from hauptbahnhof import Hauptbahnhof, logger
 
 
 class Hackerman(Hauptbahnhof):
@@ -30,11 +30,11 @@ class Hackerman(Hauptbahnhof):
         try:
             message = json.loads(msg.payload)
         except JSONDecodeError:
-            self.log.warning(f"malformed msg on topic {msg.topic}: {msg.payload}")
+            logger.warning(f"malformed msg on topic {msg.topic}: {msg.payload}")
             return
 
         if "haspa" not in message:
-            self.log.warning(f"/haspa/status message malformed: {message}")
+            logger.warning(f"/haspa/status message malformed: {message}")
             return
 
         if message["haspa"] in ["open", "offen", "auf"]:
@@ -52,28 +52,28 @@ class Hackerman(Hauptbahnhof):
             self.publish("/haspa/licht", 0)
             self.publish("/haspa/music/control", {"play": False})
         else:
-            self.log.warning("Haspa state undetermined: %s", {message["haspa"]})
+            logger.warning("Haspa state undetermined: %s", {message["haspa"]})
 
     def command_action(self, client, userdata, msg):
         """ Handle actions like alarm or party """
         try:
             message = json.loads(msg.payload)
         except JSONDecodeError:
-            self.log.warning(f"malformed msg on topic {msg.topic}: {msg.payload}")
+            logger.warning(f"malformed msg on topic {msg.topic}: {msg.payload}")
             return
 
         if "action" not in message:
-            self.log.warning(f"got invalid action msg: {message}")
+            logger.warning(f"got invalid action msg: {message}")
             return
 
         if message["action"] == "alarm":
-            self.log.info("Performing alarm...")
+            logger.info("Performing alarm...")
             self.publish("/haspa/licht/alarm", 1)
             time.sleep(2)
             self.publish("/haspa/licht/alarm", 0)
 
         elif message["action"] == "strobo":
-            self.log.info("Performing strobo...")
+            logger.info("Performing strobo...")
             for i in range(100):
                 self.publish("/haspa/licht/c", 0)
                 time.sleep(0.05)
@@ -81,7 +81,7 @@ class Hackerman(Hauptbahnhof):
                 time.sleep(0.03)
 
         elif message["action"] == "party":
-            self.log.info("Performing party...")
+            logger.info("Performing party...")
             self.publish("/haspa/licht", 0)
             self.publish("/haspa/licht/c", 0)
             self.publish("/haspa/licht/w", 0)

@@ -26,7 +26,7 @@ def test():
     msg = messages.get()  # wait max 10 secs
 
     if msg["count"] > 0:
-        testbf.log.info("test successfull")
+        testbf.logger.info("test successfull")
         return True
     else:
         raise ValueError("test failed")

@@ -150,6 +150,41 @@ class Haspa extends Component {
         }
     }
 
+    turnOnSelection = () => {
+        this.state.currentSelection.forEach((lightID) => {
+            if (capabilities.hasOwnProperty(lightID)) {
+                if (capabilities[lightID].includes(CAP_WARM)) {
+                    this.publish(lightID, CAP_WARM, 400);
+                }
+                if (capabilities[lightID].includes(CAP_COLD)) {
+                    this.publish(lightID, CAP_COLD, 100);
+                }
+            }
+        })
+    }
+
+    turnOffSelection = () => {
+        this.state.currentSelection.forEach((lightID) => {
+            if (capabilities.hasOwnProperty(lightID)) {
+                if (capabilities[lightID].includes(CAP_WARM)) {
+                    this.publish(lightID, CAP_WARM, 0);
+                }
+                if (capabilities[lightID].includes(CAP_COLD)) {
+                    this.publish(lightID, CAP_COLD, 0);
+                }
+                if (capabilities[lightID].includes(CAP_R)) {
+                    this.publish(lightID, CAP_R, 0);
+                }
+                if (capabilities[lightID].includes(CAP_G)) {
+                    this.publish(lightID, CAP_G, 0);
+                }
+                if (capabilities[lightID].includes(CAP_B)) {
+                    this.publish(lightID, CAP_B, 0);
+                }
+            }
+        })
+    }
+
     turnOnHaspa = () => {
         this.props.publish("/haspa/licht/w", 400);
         this.props.publish("/haspa/licht/c", 100);
@@ -172,8 +207,12 @@ class Haspa extends Component {
                 <div className="card">
                     <div className="card-body">
                         <span>Selection</span>
-                        <button className="btn btn-outline-danger ml-1 float-right">off</button>
-                        <button className="btn btn-outline-success ml-1 float-right">on</button>
+                        <button
+                            className="btn btn-outline-danger ml-1 float-right"
+                            onClick={this.turnOffSelection}>off</button>
+                        <button
+                            className="btn btn-outline-success ml-1 float-right"
+                            onClick={this.turnOnSelection}>on</button>
                         <div className="mt-5">
                             {this.state.showRGB ?
                                 <>

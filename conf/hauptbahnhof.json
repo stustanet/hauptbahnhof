@@ -1,4 +1,156 @@
 {
   "host": "127.0.0.1",
-  "debug": false
+  "debug": false,
+  "nodes": [
+    {
+      "type": "dfnode",
+      "topic": "/haspa/led",
+      "mappings": {
+        "/haspa/licht/1/c": 0,
+        "/haspa/licht/1/w": 1,
+        "/haspa/licht/2/c": 6,
+        "/haspa/licht/2/w": 7
+      },
+      "espid": "f97c7300"
+    },
+    {
+      "type": "dfnode",
+      "topic": "/haspa/led",
+      "mappings": {
+        "/haspa/licht/3/c": 2,
+        "/haspa/licht/3/w": 3,
+        "/haspa/licht/4/c": 0,
+        "/haspa/licht/4/w": 1
+      },
+      "espid": "ee672600"
+    },
+    {
+      "type": "dfnode",
+      "topic": "/haspa/led",
+      "mappings": {
+        "/haspa/tisch/1/vorne/r": 0,
+        "/haspa/tisch/1/vorne/g": 1,
+        "/haspa/tisch/1/vorne/b": 2,
+        "/haspa/tisch/1/vorne/w": 3,
+        "/haspa/tisch/1/hinten/r": 4,
+        "/haspa/tisch/1/hinten/g": 5,
+        "/haspa/tisch/1/hinten/b": 6,
+        "/haspa/tisch/1/hinten/w": 7
+      },
+      "espid": "dfd80b00"
+    },
+    {
+      "type": "dfnode",
+      "topic": "/haspa/led",
+      "mappings": {
+        "/haspa/terasse/1/r": 0,
+        "/haspa/terasse/1/g": 1,
+        "/haspa/terasse/1/b": 2,
+        "/haspa/terasse/1/w": 3
+      },
+      "espid": "6baf5600"
+    },
+    {
+      "type": "dfnode",
+      "topic": "/haspa/led",
+      "mappings": {
+        "/haspa/terasse/2/r": 0,
+        "/haspa/terasse/2/g": 1,
+        "/haspa/terasse/2/b": 2,
+        "/haspa/terasse/2/w": 3
+      },
+      "espid": "ae692600"
+    },
+    {
+      "type": "dfnode",
+      "topic": "/haspa/led",
+      "mappings": {
+        "/haspa/terasse/3/r": 0,
+        "/haspa/terasse/3/g": 1,
+        "/haspa/terasse/3/b": 2,
+        "/haspa/terasse/3/w": 3
+      },
+      "espid": "93692600"
+    },
+    {
+      "type": "dfnode",
+      "topic": "/haspa/led",
+      "mappings": {
+        "/haspa/terasse/4/r": 0,
+        "/haspa/terasse/4/g": 1,
+        "/haspa/terasse/4/b": 2,
+        "/haspa/terasse/4/w": 3
+      },
+      "espid": "91ae5600"
+    },
+    {
+      "type": "delock",
+      "topic": "cmnd/peter/Power",
+      "mappings": {
+        "/haspa/steckdose/peter": 0
+      }
+    }
+  ],
+  "translation": {
+    "/haspa/licht": [
+      "/haspa/licht/w",
+      "/haspa/licht/tisch",
+      "/haspa/tisch/w"
+    ],
+    "/haspa/licht/w": [
+      "/haspa/licht/1/w",
+      "/haspa/licht/2/w",
+      "/haspa/licht/3/w",
+      "/haspa/licht/4/w"
+    ],
+    "/haspa/licht/c": [
+      "/haspa/licht/1/c",
+      "/haspa/licht/2/c",
+      "/haspa/licht/3/c",
+      "/haspa/licht/4/c"
+    ],
+    "/haspa/terrasse/w": [
+      "/haspa/terrasse/1/w",
+      "/haspa/terrasse/2/w",
+      "/haspa/terrasse/3/w",
+      "/haspa/terrasse/4/w"
+    ],
+    "/haspa/terrasse/r": [
+      "/haspa/terrasse/1/r",
+      "/haspa/terrasse/2/r",
+      "/haspa/terrasse/3/r",
+      "/haspa/terrasse/4/r"
+    ],
+    "/haspa/terrasse/g": [
+      "/haspa/terrasse/1/g",
+      "/haspa/terrasse/2/g",
+      "/haspa/terrasse/3/g",
+      "/haspa/terrasse/4/g"
+    ],
+    "/haspa/terrasse/b": [
+      "/haspa/terrasse/1/b",
+      "/haspa/terrasse/2/b",
+      "/haspa/terrasse/3/b",
+      "/haspa/terrasse/4/b"
+    ],
+    "/haspa/tisch/r": [
+      "/haspa/tisch/1/vorne/r",
+      "/haspa/tisch/1/hinten/r"
+    ],
+    "/haspa/tisch/g": [
+      "/haspa/tisch/1/vorne/g",
+      "/haspa/tisch/1/hinten/g"
+    ],
+    "/haspa/tisch/b": [
+      "/haspa/tisch/1/vorne/b",
+      "/haspa/tisch/1/hinten/b"
+    ],
+    "/haspa/tisch/w": [
+      "/haspa/tisch/1/vorne/w",
+      "/haspa/tisch/1/hinten/w"
+    ],
+    "/haspa/licht/tisch": [
+      "/haspa/steckdose/peter"
+    ]
+  }
 }
