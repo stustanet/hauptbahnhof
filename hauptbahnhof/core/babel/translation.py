@@ -1,4 +1,4 @@
-from typing import List, Dict, Set
+from typing import List, Dict, Set, Optional
 
 from core import Config
 
@@ -24,7 +24,10 @@ class Translation:
         else:
             raise RecursionDepthExceeded()
 
-    def translate(self, topic) -> Set[str]:
+    def translate(self, topic) -> Optional[Set[str]]:
+        if topic not in self._mappings:
+            return None
+
         return self._translate(topic)
 
     @property

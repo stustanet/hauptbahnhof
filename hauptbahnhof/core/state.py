@@ -28,19 +28,28 @@ class State:
 
     async def _update_node_state(self, topic: str, value: int) -> None:
         update = StateUpdate(topic, value)
+        did_update = False
         for node in self.nodes:
-            if node.set_state_for_topic(topic, value):
+            valid_node = node.set_state_for_topic(topic, value)
+            if valid_node:
+                did_update = True
                 await self.mqtt_update_queue.put(
                     MQTTUpdate(node.topic, node.state_as_mqtt_message())
                 )
 
-        await self.ws_update_queue.put(update)
+        if did_update:
+            await self.ws_update_queue.put(update)
 
     async def _update_node_topic(self, topic: str, value: int) -> None:
         """
         Process a value input on a topic with translation
         """
         topics = self.translation.translate(topic)
+        if not topics:
+            # we expect a base topic here
+            await self._update_node_state(topic, value)
+            return
+
         await asyncio.gather(
             *[self._update_node_state(topic, value) for topic in topics]
         )

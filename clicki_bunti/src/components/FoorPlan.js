@@ -73,7 +73,7 @@ class FloorPlan extends Component {
                             strokeOpacity: 1,
                             fillOpacity: 1
                         }}
-                        id="haspaLight2"
+                        id="/haspa/licht/1"
                         width="78.131027"
                         height="5.9563074"
                         x="101.40936"
@@ -90,7 +90,7 @@ class FloorPlan extends Component {
                             strokeOpacity: 1,
                             fillOpacity: 1
                         }}
-                        id="haspaLight1"
+                        id="/haspa/licht/2"
                         width="5.5919604"
                         height="76.206718"
                         x="173.92145"
@@ -107,7 +107,7 @@ class FloorPlan extends Component {
                             strokeOpacity: 1,
                             fillOpacity: 1
                         }}
-                        id="haspaLight4"
+                        id="/haspa/licht/3"
                         width="5.6121798"
                         height="76.805298"
                         x="173.90607"
@@ -124,7 +124,7 @@ class FloorPlan extends Component {
                             strokeOpacity: 1,
                             fillOpacity: 1
                         }}
-                        id="haspaLight3"
+                        id="/haspa/licht/4"
                         width="78.954239"
                         height="5.1752009"
                         x="100.57021"
@@ -155,7 +155,7 @@ class FloorPlan extends Component {
                             strokeOpacity: 1,
                             fillOpacity: 1
                         }}
-                        id="table1Back"
+                        id="/haspa/tisch/1/hinten"
                         width="46.643314"
                         height="4.4506459"
                         x="24.067804"
@@ -172,7 +172,7 @@ class FloorPlan extends Component {
                             strokeOpacity: 1,
                             fillOpacity: 1
                         }}
-                        id="table1Front"
+                        id="/haspa/tisch/1/vorne"
                         width="44.437176"
                         height="4.285027"
                         x="73.059784"
@@ -184,7 +184,7 @@ class FloorPlan extends Component {
                         x="24.095457"
                         height="5.9563074"
                         width="83.748718"
-                        id="terasseLight2"
+                        id="/haspa/terrasse/2"
                         style={{
                             fill: "#ffffff",
                             stroke: "rgba(0,0,0,0.5)",
@@ -201,7 +201,7 @@ class FloorPlan extends Component {
                         x="24.067871"
                         height="5.9563074"
                         width="83.872177"
-                        id="terasseLight1"
+                        id="/haspa/terrasse/1"
                         style={{
                             fill: "#ffffff",
                             stroke: "rgba(0,0,0,0.5)",
@@ -218,7 +218,7 @@ class FloorPlan extends Component {
                         x="107.82738"
                         height="5.9898973"
                         width="71.708618"
-                        id="terasseLight4"
+                        id="/haspa/terrasse/4"
                         style={{
                             fill: "#ffffff",
                             stroke: "rgba(0,0,0,0.5)",
@@ -240,7 +240,7 @@ class FloorPlan extends Component {
                             strokeOpacity: 1,
                             fillOpacity: 1
                         }}
-                        id="terasseLight3"
+                        id="/haspa/terrasse/3"
                         width="71.617996"
                         height="5.9901586"
                         x="107.93975"
@@ -266,7 +266,7 @@ class FloorPlan extends Component {
                         x="24.068886"
                         height="4.4506459"
                         width="46.643314"
-                        id="table2Back"
+                        id="/haspa/tisch/2/hinten"
                         style={{
                             fill: "#ffffff",
                             stroke: "rgba(0,0,0,0.5)",
@@ -283,7 +283,7 @@ class FloorPlan extends Component {
                         x="73.06086"
                         height="4.285027"
                         width="44.437176"
-                        id="table2Front"
+                        id="/haspa/tisch/2/vorne"
                         style={{
                             fill: "#ffffff",
                             stroke: "rgba(0,0,0,0.5)",

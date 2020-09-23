@@ -1,6 +1,6 @@
 {
   "mqtt": {
-    "host": "192.168.1.1",
+    "host": "localhost",
     "port": 1883
   },
   "websocket": {
@@ -57,10 +57,10 @@
       "type": "dfnode",
       "topic": "/haspa/led",
       "mappings": {
-        "/haspa/terasse/1/r": 0,
-        "/haspa/terasse/1/g": 1,
-        "/haspa/terasse/1/b": 2,
-        "/haspa/terasse/1/w": 3
+        "/haspa/terrasse/1/r": 0,
+        "/haspa/terrasse/1/g": 1,
+        "/haspa/terrasse/1/b": 2,
+        "/haspa/terrasse/1/w": 3
       },
       "espid": "6baf5600"
     },
@@ -68,10 +68,10 @@
       "type": "dfnode",
       "topic": "/haspa/led",
       "mappings": {
-        "/haspa/terasse/2/r": 0,
-        "/haspa/terasse/2/g": 1,
-        "/haspa/terasse/2/b": 2,
-        "/haspa/terasse/2/w": 3
+        "/haspa/terrasse/2/r": 0,
+        "/haspa/terrasse/2/g": 1,
+        "/haspa/terrasse/2/b": 2,
+        "/haspa/terrasse/2/w": 3
       },
       "espid": "ae692600"
     },
@@ -79,10 +79,10 @@
       "type": "dfnode",
       "topic": "/haspa/led",
       "mappings": {
-        "/haspa/terasse/3/r": 0,
-        "/haspa/terasse/3/g": 1,
-        "/haspa/terasse/3/b": 2,
-        "/haspa/terasse/3/w": 3
+        "/haspa/terrasse/3/r": 0,
+        "/haspa/terrasse/3/g": 1,
+        "/haspa/terrasse/3/b": 2,
+        "/haspa/terrasse/3/w": 3
       },
       "espid": "93692600"
     },
@@ -90,10 +90,10 @@
       "type": "dfnode",
       "topic": "/haspa/led",
       "mappings": {
-        "/haspa/terasse/4/r": 0,
-        "/haspa/terasse/4/g": 1,
-        "/haspa/terasse/4/b": 2,
-        "/haspa/terasse/4/w": 3
+        "/haspa/terrasse/4/r": 0,
+        "/haspa/terrasse/4/g": 1,
+        "/haspa/terrasse/4/b": 2,
+        "/haspa/terrasse/4/w": 3
       },
       "espid": "91ae5600"
     },
