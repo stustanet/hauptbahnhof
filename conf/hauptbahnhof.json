@@ -1,6 +1,20 @@
 {
-  "host": "127.0.0.1",
-  "debug": false,
+  "mqtt": {
+    "host": "192.168.1.1",
+    "port": 1883
+  },
+  "websocket": {
+    "chainfile": "tls.pem",
+    "externalHost": "localhost",
+    "externalPort": 8001,
+    "internalHost": "localhost",
+    "internalPort": 8002,
+    "tokenValiditySeconds": 3600,
+    "users": {
+      "stustanet": "adminadmin"
+    }
+  },
+  "debug": true,
   "nodes": [
     {
       "type": "dfnode",
@@ -94,8 +108,12 @@
   "translation": {
     "/haspa/licht": [
       "/haspa/licht/w",
+      "/haspa/licht/c",
       "/haspa/licht/tisch",
-      "/haspa/tisch/w"
+      "/haspa/tisch/w",
+      "/haspa/tisch/r",
+      "/haspa/tisch/g",
+      "/haspa/tisch/b"
     ],
     "/haspa/licht/w": [
       "/haspa/licht/1/w",

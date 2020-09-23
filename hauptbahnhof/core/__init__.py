@@ -7,7 +7,6 @@ from pathlib import Path
 from typing import Dict, Callable, Union, Optional
 
 from hauptbahnhof.core.config import Config
-from hauptbahnhof.core.state import State
 
 import paho.mqtt.client as mqtt
 
@@ -22,7 +21,7 @@ ERROR_MESSAGES = {
 LOG_FORMAT = "%(asctime)s | %(name)s | %(levelname)5s | %(message)s"
 
 
-class Hauptbahnhof:
+class HauptbahnhofModule:
     """
     Hauptbahnhof manager with a lot of convenience methods
     """
@@ -136,16 +135,3 @@ class Hauptbahnhof:
             self._mqtt.publish(topic, payload)
         else:
             self._mqtt.publish(topic, msg)
-
-
-class Core(Hauptbahnhof):
-    """
-    The core state handling component of the hauptbahnhof.
-    """
-    def __init__(self):
-        super().__init__("core")
-        self.state = State(self.logger)
-        self.config = Config.from_dict(self.config, self.logger)
-
-    def on_connect(self, client, userdata, flags, rc):
-        super().on_connect(client, userdata, flags, rc)

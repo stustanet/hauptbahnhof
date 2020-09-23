@@ -6,10 +6,10 @@ import time
 import json
 from pathlib import Path
 
-from hauptbahnhof import Hauptbahnhof
+from hauptbahnhof.core import HauptbahnhofModule
 
 
-class HaspaWeb(Hauptbahnhof):
+class HaspaWeb(HauptbahnhofModule):
     """
     Recreate the haspa website to represent the current haspa state
     -- This will connect to a remote hauptbahnhof client!

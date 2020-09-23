@@ -3,10 +3,10 @@ import re
 import subprocess
 from json import JSONDecodeError
 
-from hauptbahnhof import Hauptbahnhof
+from hauptbahnhof.core import HauptbahnhofModule
 
 
-class MPD(Hauptbahnhof):
+class MPD(HauptbahnhofModule):
     """
     Implement Interfacing to a locally running mpd server
     """

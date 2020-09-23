@@ -2,10 +2,10 @@ import json
 import subprocess
 from json import JSONDecodeError
 
-from hauptbahnhof import Hauptbahnhof
+from hauptbahnhof.core import HauptbahnhofModule
 
 
-class NSA(Hauptbahnhof):
+class NSA(HauptbahnhofModule):
     """
     Scan the local hackerspace network for new and unknown devices to send back a result
     """
@@ -38,7 +38,8 @@ class NSA(Hauptbahnhof):
 
         # TODO use util/arp-scan
         proc = subprocess.run(
-            ["arp-scan", self.config["space_network"]], stdout=subprocess.PIPE,
+            ["arp-scan", self.config["space_network"]],
+            stdout=subprocess.PIPE,
         )
 
         output = proc.stdout

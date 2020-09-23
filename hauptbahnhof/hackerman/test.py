@@ -4,7 +4,9 @@ from hauptbahnhof import Hauptbahnhof
 
 
 def main():
-    testbf = Hauptbahnhof("test",)
+    testbf = Hauptbahnhof(
+        "test",
+    )
 
     time.sleep(2)
 

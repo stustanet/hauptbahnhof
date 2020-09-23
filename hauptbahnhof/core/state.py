@@ -1,13 +1,82 @@
-from typing import Any
+import asyncio
+import json
+import logging
+from typing import Dict, List
+
+from core.babel.node import create_nodes_from_config
+from core.babel.translation import Translation
+from core.config import Config
+from core.utils import MQTTUpdate, StateUpdate
 
 
 class State:
-    def __init__(self, logger):
+    def __init__(self, nodes: List, translation: Translation, logger: logging.Logger):
         self.logger = logger
         self._state = {}
 
-    def get(self, key: str) -> Any:
-        return self._state.get(key)
+        self.nodes = nodes
+        self.translation = translation
 
-    def set(self, key: str, value: Any):
-        self._state[key] = value
+        self.ws_update_queue = asyncio.Queue()
+        self.mqtt_update_queue = asyncio.Queue()
+
+    async def init(self):
+        for node in self.nodes:
+            await self.mqtt_update_queue.put(
+                MQTTUpdate(node.topic, node.state_as_mqtt_message())
+            )
+
+    async def _update_node_state(self, topic: str, value: int) -> None:
+        update = StateUpdate(topic, value)
+        for node in self.nodes:
+            if node.set_state_for_topic(topic, value):
+                await self.mqtt_update_queue.put(
+                    MQTTUpdate(node.topic, node.state_as_mqtt_message())
+                )
+
+        await self.ws_update_queue.put(update)
+
+    async def _update_node_topic(self, topic: str, value: int) -> None:
+        """
+        Process a value input on a topic with translation
+        """
+        topics = self.translation.translate(topic)
+        await asyncio.gather(
+            *[self._update_node_state(topic, value) for topic in topics]
+        )
+
+    async def process_updates(self, updates: Dict) -> None:
+        # process node updates
+        await asyncio.gather(
+            *[
+                self._update_node_topic(topic, value)
+                for topic, value in updates.get("nodes", {}).items()
+            ]
+        )
+        # insert any other state update processing here
+
+    def to_dict(self) -> Dict:
+        state_dict = {"nodes": {}, **self._state}
+        for node in self.nodes:
+            state_dict["nodes"].update(node.to_dict())
+        return state_dict
+
+    def to_json(self) -> str:
+        return json.dumps(self.to_dict())
+
+    def get_mqtt_topics(self) -> List[str]:
+        topics = self.translation.topics
+        for node in self.nodes:
+            topics.extend(node.mappings.keys())
+
+        return topics
+
+    @classmethod
+    def from_config(cls, config: Config, logger: logging.Logger) -> "State":
+        state = cls(
+            nodes=create_nodes_from_config(config, logger),
+            translation=Translation.from_config(config),
+            logger=logger,
+        )
+
+        return state

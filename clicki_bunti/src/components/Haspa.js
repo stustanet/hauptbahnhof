@@ -55,6 +55,13 @@ class Haspa extends Component {
         showRGB: false,
         showW: false,
         showC: false,
+        selectionColor: {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "c": 0,
+            "w": 0
+        },
         currentSelection: [],
     }
 
@@ -69,7 +76,7 @@ class Haspa extends Component {
     onSelectionColdChange = (brightness) => {
         this.state.currentSelection.forEach((lightID) => {
             if (capabilities.hasOwnProperty(lightID) && capabilities[lightID].includes(CAP_COLD)) {
-                this.publish(lightID, CAP_COLD, brightness);
+                this.updateTopic(lights[lightID] + "/" + CAP_COLD, brightness)
             }
         })
     }
@@ -77,9 +84,52 @@ class Haspa extends Component {
     onSelectionWarmChange = (brightness) => {
         this.state.currentSelection.forEach((lightID) => {
             if (capabilities.hasOwnProperty(lightID) && capabilities[lightID].includes(CAP_WARM)) {
-                this.publish(lightID, CAP_WARM, brightness);
+                this.updateTopic(lights[lightID] + "/" + CAP_WARM, brightness)
             }
         })
+    }
+
+    setSelectionColor = (capability, value) => {
+        let update = {};
+        update[capability] = value;
+        this.setState({selectionColor: Object.assign(this.state.selectionColor, update)})
+    }
+
+    recomputeSelectionColors = (selection) => {
+        if (selection.length === 0) {
+            this.setState({
+                selectionColor: {
+                    "r": 0,
+                    "g": 0,
+                    "b": 0,
+                    "c": 0,
+                    "w": 0
+                }
+            });
+        } else if (selection.length === 1) {
+            let updatedColor = {...this.state.selectionColor};
+            for (const capability of capabilities[selection[0]]) {
+                const topic = lights[selection[0]] + "/" + capability;
+                if (!this.props.nodeState.hasOwnProperty(topic)) {
+                    console.log("error, selection not present in state", topic, this.props.nodeState);
+                } else {
+                    updatedColor[capability] = this.props.nodeState[topic];
+                }
+            }
+            console.log(updatedColor)
+            this.setState({selectionColor: updatedColor})
+        } else {
+            let updatedColor = {...this.state.selectionColor};
+            for (const capability of capabilities[selection[0]]) {
+                const selectionWithCap = selection.filter(item => capabilities[item].includes(capability));
+                let avg = selectionWithCap
+                    .map(item => this.props.nodeState[lights[item] + "/" + capability])
+                    .reduce((prev, curr) => prev + curr, 0) / selectionWithCap.length;
+                updatedColor[capability] = Math.round(avg);
+            }
+            console.log(updatedColor)
+            this.setState({selectionColor: updatedColor})
+        }
     }
 
     onSelectionChange = (selection) => {
@@ -97,7 +147,9 @@ class Haspa extends Component {
                     if (capabilities[lightID].includes(CAP_COLD)) {
                         state["showC"] |= true;
                     }
-                    if (capabilities[lightID].includes(CAP_R) || capabilities[lightID].includes(CAP_G) || capabilities[lightID].includes(CAP_B)) {
+                    if (capabilities[lightID].includes(CAP_R)
+                        || capabilities[lightID].includes(CAP_G)
+                        || capabilities[lightID].includes(CAP_B)) {
                         state["showRGB"] |= true;
                     }
                 } else {
@@ -108,7 +160,8 @@ class Haspa extends Component {
         } else {
             this.setState({showRGB: false, showW: false, showC: false});
         }
-        this.setState({currentSelection: selection});
+        this.recomputeSelectionColors(selection);
+        this.setState({currentSelection: selection})
     }
 
     onLightChange = (mappedID, capability, value) => {
@@ -138,12 +191,14 @@ class Haspa extends Component {
 
         // do some sanity checking whether this light supports the given led type
         if (capability === CAP_ALL) {
+            let updates = {};
             capabilities[lightID].forEach((item) => {
-                this.publish(lightID, item, value)
+                updates[lights[lightID] + "/" + item] = value;
             });
+            this.update(updates);
         } else {
             if (capabilities[lightID].includes(capability)) {
-                this.publish(lightID, capability, value);
+                this.updateTopic(lights[lightID] + "/" + capability, value)
             } else {
                 console.error("invalid capability for light ID:", lightID, capability);
             }
@@ -153,12 +208,14 @@ class Haspa extends Component {
     turnOnSelection = () => {
         this.state.currentSelection.forEach((lightID) => {
             if (capabilities.hasOwnProperty(lightID)) {
+                let updates = {};
                 if (capabilities[lightID].includes(CAP_WARM)) {
-                    this.publish(lightID, CAP_WARM, 400);
+                    updates[lights[lightID] + "/" + CAP_WARM] = 400;
                 }
                 if (capabilities[lightID].includes(CAP_COLD)) {
-                    this.publish(lightID, CAP_COLD, 100);
+                    updates[lights[lightID] + "/" + CAP_COLD] = 100;
                 }
+                this.update(updates);
             }
         })
     }
@@ -166,37 +223,57 @@ class Haspa extends Component {
     turnOffSelection = () => {
         this.state.currentSelection.forEach((lightID) => {
             if (capabilities.hasOwnProperty(lightID)) {
+                let updates = {};
                 if (capabilities[lightID].includes(CAP_WARM)) {
-                    this.publish(lightID, CAP_WARM, 0);
+                    updates[lights[lightID] + "/" + CAP_WARM] = 0;
                 }
                 if (capabilities[lightID].includes(CAP_COLD)) {
-                    this.publish(lightID, CAP_COLD, 0);
+                    updates[lights[lightID] + "/" + CAP_COLD] = 0;
                 }
                 if (capabilities[lightID].includes(CAP_R)) {
-                    this.publish(lightID, CAP_R, 0);
+                    updates[lights[lightID] + "/" + CAP_R] = 0;
                 }
                 if (capabilities[lightID].includes(CAP_G)) {
-                    this.publish(lightID, CAP_G, 0);
+                    updates[lights[lightID] + "/" + CAP_G] = 0;
                 }
                 if (capabilities[lightID].includes(CAP_B)) {
-                    this.publish(lightID, CAP_B, 0);
+                    updates[lights[lightID] + "/" + CAP_B] = 0;
                 }
+                this.update(updates);
             }
         })
     }
 
     turnOnHaspa = () => {
-        this.props.publish("/haspa/licht/w", 400);
-        this.props.publish("/haspa/licht/c", 100);
-        this.props.publish("/haspa/licht/tisch", 1);
-        this.props.publish("/haspa/tisch/r", 160);
-        this.props.publish("/haspa/tisch/g", 100);
-        this.props.publish("/haspa/tisch/b", 70);
-        this.props.publish("/haspa/tisch/w", 90);
+        this.update({
+            "/haspa/licht/w": 400,
+            "/haspa/licht/c": 100,
+            "/haspa/licht/tisch": 1,
+            "/haspa/tisch/r": 160,
+            "/haspa/tisch/g": 100,
+            "/haspa/tisch/b": 70,
+            "/haspa/tisch/w": 90
+        })
     }
 
-    publish = (lightID, capability, value) => {
-        this.props.publish(lights[lightID] + "/" + capability, value);
+    turnOffHaspa = () => {
+        this.updateTopic("/haspa/licht", 0)
+    }
+
+    updateTopic = (topic, value) => {
+        let updates = {}
+        updates[topic] = value
+        this.update(updates)
+    }
+
+    update = (updates) => {
+        const payload = {
+            type: "state_update",
+            updates: {
+                nodes: updates
+            }
+        }
+        this.props.send(payload)
     }
 
     render() {
@@ -209,10 +286,12 @@ class Haspa extends Component {
                         <span>Selection</span>
                         <button
                             className="btn btn-outline-danger ml-1 float-right"
-                            onClick={this.turnOffSelection}>off</button>
+                            onClick={this.turnOffSelection}>off
+                        </button>
                         <button
                             className="btn btn-outline-success ml-1 float-right"
-                            onClick={this.turnOnSelection}>on</button>
+                            onClick={this.turnOnSelection}>on
+                        </button>
                         <div className="mt-5">
                             {this.state.showRGB ?
                                 <>
@@ -225,6 +304,8 @@ class Haspa extends Component {
                                 <Slider
                                     className="mt-1"
                                     max={1000}
+                                    value={this.state.selectionColor[CAP_WARM]}
+                                    onChange={(value) => this.setSelectionColor(CAP_WARM, value)}
                                     onAfterChange={this.onSelectionWarmChange}
                                 /> : ""
                             }
@@ -232,6 +313,8 @@ class Haspa extends Component {
                                 <Slider
                                     className="mt-1"
                                     max={1000}
+                                    value={this.state.selectionColor[CAP_COLD]}
+                                    onChange={(value) => this.setSelectionColor(CAP_COLD, value)}
                                     onAfterChange={this.onSelectionColdChange}
                                 /> : ""
                             }
@@ -260,9 +343,7 @@ class Haspa extends Component {
                                         <span>Space</span>
                                         <button
                                             className="btn btn-outline-danger ml-1 float-right"
-                                            onClick={() => {
-                                                this.props.publish("/haspa/licht", 0)
-                                            }}>off
+                                            onClick={this.turnOffHaspa}>off
                                         </button>
                                         <button
                                             className="btn btn-outline-success ml-1 float-right"

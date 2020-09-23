@@ -22,7 +22,10 @@ class Hackerman(Hauptbahnhof):
         self.subscribe("/haspa/action", self.command_action)
 
     def command_status(
-        self, client, userdata, msg,
+        self,
+        client,
+        userdata,
+        msg,
     ):
         """
         React to a status change of the hackerspace - switch the lights, ...

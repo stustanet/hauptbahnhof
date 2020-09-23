@@ -1,16 +1,18 @@
 import json
-import logging
 from pathlib import Path
-from typing import Dict
+from typing import Dict, Union, Optional
 
 
 class Config(dict):
-    def __init__(self, logger: logging.Logger, cfg: Dict):
+    def __init__(self, cfg: Optional[Dict] = None):
+        cfg = cfg or {}
         super().__init__(**cfg)
-        self.logger = logger
 
     @classmethod
-    def from_file(cls, file_path: Path, logger: logging.Logger):
+    def from_file(cls, file_path: Union[str, Path]):
+        if isinstance(file_path, str):
+            file_path = Path(file_path)
+
         if not file_path.exists():
             raise FileNotFoundError(f"could not find config file in {file_path}")
 
@@ -18,9 +20,8 @@ class Config(dict):
             with file_path.open("r") as f:
                 cfg = json.load(f)
         except json.JSONDecodeError as e:
-            logger.error("got json decode error %s when trying to load config file %s", e, file_path)
             raise e
 
-        config = Config(logger=logger, cfg=cfg)
+        config = Config(cfg=cfg)
 
         return config
