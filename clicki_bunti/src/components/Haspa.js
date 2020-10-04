@@ -31,7 +31,7 @@ class Haspa extends Component {
     onMappingColorChange = (mappedTopic, color) => {
         let updates = {}
         for (const capability in color) {
-            for (const lightID in MAPPINGS[mappedTopic]) {
+            for (const lightID of MAPPINGS[mappedTopic]) {
                 if (CAPABILITIES.hasOwnProperty(lightID) && CAPABILITIES[lightID].includes(capability)) {
                     updates[lightID + "/" + capability] = color[capability];
                 }
@@ -42,15 +42,15 @@ class Haspa extends Component {
     }
 
     onHaspaColorChange = (color) => {
-        this.onMappingColorChange("/haspa/licht")
+        this.onMappingColorChange("/haspa/licht", color);
     }
 
     onTableColorChange = (color) => {
-        this.onMappingColorChange("/haspa/tisch/1")
+        this.onMappingColorChange("/haspa/tisch/1", color);
     }
 
     onTerrasseColorChange = (color) => {
-        this.onMappingColorChange("/haspa/terrasse")
+        this.onMappingColorChange("/haspa/terrasse", color);
     }
 
     recomputeSelectionColors = () => {

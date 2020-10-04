@@ -10,8 +10,25 @@ class HaspaPicker extends Component {
         terrasseColors: this.props.terrasseColors
     };
 
-    onRGBChange = () => {
+    onRGBChange = (color, which) => {
+        // color = {r: ?, g: ?, b: ?}
+        let stateColor = {...this.state[which]};
+        stateColor.r = color.rgb.r;
+        stateColor.g = color.rgb.g;
+        stateColor.b = color.rgb.b;
 
+        let stateUpdate = {};
+        stateUpdate[which] = stateColor;
+
+        this.setState(stateUpdate);
+    }
+
+    onTableRGBChange = (color) => {
+        this.onRGBChange(color, "tableColors");
+    }
+
+    onTerrasseRGBChange = (color) => {
+        this.onRGBChange(color, "terrasseColors");
     }
 
     onHaspaChange = (capability, value) => {
@@ -87,6 +104,9 @@ class HaspaPicker extends Component {
                             </button>
                             <HuePicker
                                 className="mt-4"
+                                color={this.state.tableColors}
+                                onChange={this.onTableRGBChange}
+                                onChangeComplete={this.onAfterTableChange}
                             />
                             <Slider
                                 max={1000}
@@ -108,6 +128,9 @@ class HaspaPicker extends Component {
                             </button>
                             <HuePicker
                                 className="mt-4"
+                                color={this.state.terrasseColors}
+                                onChange={this.onTerrasseRGBChange}
+                                onChangeComplete={this.onAfterTerrasseChange}
                             />
                             <Slider
                                 max={1000}

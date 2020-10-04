@@ -20,7 +20,7 @@ setup(
     url="https://gitlab.stusta.de/stustanet/hauptbahnhof",
     packages=[
         "hauptbahnhof",
-        "hauptbahnhof.babel",
+        "hauptbahnhof.core",
         "hauptbahnhof.hackerman",
         "hauptbahnhof.nsa",
         "hauptbahnhof.haspa_web",

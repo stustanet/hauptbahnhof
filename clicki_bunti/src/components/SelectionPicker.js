@@ -5,8 +5,12 @@ import {HuePicker} from "react-color";
 class SelectionPicker extends Component {
     state = this.props.colors;
 
-    onRGBChange = () => {
-
+    onRGBChange = (color) => {
+        this.setState({
+            r: color.rgb.r,
+            g: color.rgb.g,
+            b: color.rgb.b,
+        })
     }
 
     onAfterChange = () => {
@@ -36,7 +40,9 @@ class SelectionPicker extends Component {
                         {this.props.showRGBSlider ?
                             <>
                                 <HuePicker
-                                    onChangeComplete={this.onRGBChange}
+                                    color={this.state}
+                                    onChange={this.onRGBChange}
+                                    onChangeComplete={this.onAfterChange}
                                 />
                                 <hr/>
                             </> : ""}

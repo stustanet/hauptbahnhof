@@ -40,7 +40,7 @@ class State:
         if did_update:
             await self.ws_update_queue.put(update)
 
-    async def _update_node_topic(self, topic: str, value: int) -> None:
+    async def update_node_topic(self, topic: str, value: int) -> None:
         """
         Process a value input on a topic with translation
         """
@@ -58,7 +58,7 @@ class State:
         # process node updates
         await asyncio.gather(
             *[
-                self._update_node_topic(topic, value)
+                self.update_node_topic(topic, value)
                 for topic, value in updates.get("nodes", {}).items()
             ]
         )
