@@ -6,7 +6,7 @@ def main():
     Actually start the shit
     """
     haspaweb = HaspaWeb()
-    haspaweb.hbf.start(spinoff=False)
+    haspaweb.run()
 
 
 if __name__ == "__main__":

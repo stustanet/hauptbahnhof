@@ -1,4 +1,4 @@
-from hauptbahnhof.nsa.nsa import NSA
+from hauptbahnhof.nsa import NSA
 
 
 def main():

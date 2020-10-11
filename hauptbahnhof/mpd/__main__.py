@@ -1,4 +1,4 @@
-from hauptbahnhof.mpd.mpd import MPD
+from hauptbahnhof.mpd import MPD
 
 
 def main():
