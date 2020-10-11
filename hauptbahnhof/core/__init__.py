@@ -68,8 +68,8 @@ class HauptbahnhofModule:
         self._mqtt.loop_forever()
 
     def _connect(self):
-        self.logger.debug("Trying to connect to broker %s", self.config["host"])
-        self._mqtt.connect(self.config["host"])
+        self.logger.debug("Trying to connect to broker %s", self.config["mqtt"]["host"])
+        self._mqtt.connect(self.config["mqtt"]["host"])
 
     def on_connect(self, client, userdata, flags, rc):
         if rc != 0:
@@ -78,7 +78,7 @@ class HauptbahnhofModule:
             else:
                 msg = "Unknown error occured: " + rc
             self.logger.error(msg)
-        self.logger.info("Connected to mqqt broker on %s", self.config["host"])
+        self.logger.info("Connected to mqqt broker on %s", self.config["mqtt"]["host"])
 
     def _on_message(self, client, userdata, msg):
         try:
