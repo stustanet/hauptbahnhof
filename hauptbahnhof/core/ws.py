@@ -59,7 +59,7 @@ class WebSocket:
 
         # initialize ssl
         self.ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-        self.ssl_context.load_cert_chain(Path(self.config.get("chainfile")))
+        self.ssl_context.load_cert_chain(Path(self.config.get("chainfile")), Path(self.config.get("private_key")))
 
         self.connections = set()
 

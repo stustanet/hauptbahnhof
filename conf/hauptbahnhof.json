@@ -5,6 +5,7 @@
   },
   "websocket": {
     "chainfile": "tls.pem",
+    "private_key": "tls.key",
     "external_host": "localhost",
     "external_port": 8001,
     "internal_host": "localhost",
