@@ -28,7 +28,8 @@ class MQTT:
 
     async def handle_message(self, msg):
         self.logger.debug("Received mqtt message on topic %s: %s", msg.topic, msg.data)
-        if not msg.data.isnumeric():
+        payload = msg.data.decode()
+        if not payload.isnumeric():
             self.logger.warning(
                 "Received invalid mqtt payload on topic %s: %s", msg.topic, msg.data
             )
