@@ -59,12 +59,18 @@ class WebSocket:
 
         # initialize ssl
         self.ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-        self.ssl_context.load_cert_chain(Path(self.config.get("chainfile")), Path(self.config.get("private_key")))
+        self.ssl_context.load_cert_chain(
+            Path(self.config.get("chainfile")), Path(self.config.get("private_key"))
+        )
 
         self.connections = set()
 
     async def _send_state(self, websocket: WebSocketServerProtocol):
-        update = {"type": "state", "state": self.state.to_dict(), "block_unprivileged": self.block_unprivileged}
+        update = {
+            "type": "state",
+            "state": self.state.to_dict(),
+            "block_unprivileged": self.block_unprivileged,
+        }
         await websocket.send(json.dumps(update))
 
     async def _send_client_info(self, websocket: WebSocketServerProtocol):
@@ -73,7 +79,7 @@ class WebSocket:
             "type": "client_info",
             "client_ip": client_ip,
             "privileged_address": f'ws://{self.config.get("internal_host")}:{self.config.get("internal_port")}',
-            "unprivileged_address": f'wss://{self.config.get("external_host")}:{self.config.get("external_port")}'
+            "unprivileged_address": f'wss://{self.config.get("external_host")}:{self.config.get("external_port")}',
         }
         await websocket.send(json.dumps(client_info))
 
@@ -127,7 +133,9 @@ class WebSocket:
         return None
 
     @privileged
-    async def _handle_update_troll_block(self, websocket: WebSocketServerProtocol, msg: Dict):
+    async def _handle_update_troll_block(
+        self, websocket: WebSocketServerProtocol, msg: Dict
+    ):
         if "block_unprivileged" in msg and isinstance(msg["block_unprivileged"], bool):
             self.block_unprivileged = msg["block_unprivileged"]
             self.logger.info("updated block_unprivileged = %s", self.block_unprivileged)
@@ -184,8 +192,14 @@ class WebSocket:
                 )
                 await self._send_state(websocket)
 
-    async def ws_handler(self, websocket: WebSocketServerProtocol, path: str, requires_auth=True):
-        self.logger.debug("received new websocket connection %s, privileged: %s", websocket, not requires_auth)
+    async def ws_handler(
+        self, websocket: WebSocketServerProtocol, path: str, requires_auth=True
+    ):
+        self.logger.debug(
+            "received new websocket connection %s, privileged: %s",
+            websocket,
+            not requires_auth,
+        )
         await self._register(websocket)
         try:
             if not requires_auth:
@@ -204,7 +218,9 @@ class WebSocket:
         finally:
             await self._unregister(websocket)
 
-    async def ws_handler_privileged(self, websocket: websockets.WebSocketServerProtocol, path: str):
+    async def ws_handler_privileged(
+        self, websocket: websockets.WebSocketServerProtocol, path: str
+    ):
         await self.ws_handler(websocket, path, requires_auth=False)
 
     async def state_handler(self):
@@ -213,9 +229,9 @@ class WebSocket:
             updates: List[StateUpdate] = await self.state.ws_update_queue.get()
             update_msg = {
                 "type": "state_update",
-                "updates": {"nodes": {
-                    update.topic: update.value for update in updates
-                }},
+                "updates": {
+                    "nodes": {update.topic: update.value for update in updates}
+                },
             }
 
             await self.send_update(update_msg)
@@ -226,7 +242,7 @@ class WebSocket:
                 self.ws_handler,
                 self.config.get("external_host"),
                 self.config.get("external_port"),
-                ssl=self.ssl_context
+                ssl=self.ssl_context,
             ),
             websockets.serve(
                 self.ws_handler_privileged,
