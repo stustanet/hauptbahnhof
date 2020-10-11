@@ -10,9 +10,9 @@ from typing import Dict, Optional, Tuple, List
 import websockets
 from websockets import WebSocketServerProtocol
 
-from core.config import Config
-from core.state import State
-from core.utils import StateUpdate
+from .config import Config
+from .state import State
+from .utils import StateUpdate
 
 
 async def _send_error(websocket, error_code: int):

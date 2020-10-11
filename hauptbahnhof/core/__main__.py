@@ -2,10 +2,10 @@ import argparse
 import asyncio
 import logging
 
-from core.config import Config
-from core.mqtt import MQTT
-from core.state import State
-from core.ws import WebSocket
+from .config import Config
+from .mqtt import MQTT
+from .state import State
+from .ws import WebSocket
 
 LOG_FORMAT = "%(asctime)s | %(name)s | %(levelname)5s | %(message)s"
 
