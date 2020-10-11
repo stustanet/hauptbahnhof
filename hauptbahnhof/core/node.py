@@ -89,10 +89,12 @@ def create_nodes_from_config(config: Config, logger: logging.Logger) -> List[Nod
     nodes = []
     for node_cfg in config["nodes"]:
         if node_cfg.get("type") == "dfnode":
-            if (node := DFNode.from_dict(node_cfg)) is not None:
+            node = DFNode.from_dict(node_cfg)
+            if node is not None:
                 nodes.append(node)
         elif node_cfg.get("type") == "delock":
-            if (node := DELock.from_dict(node_cfg)) is not None:
+            node = DELock.from_dict(node_cfg)
+            if node is not None:
                 nodes.append(node)
         else:
             logger.warning(
