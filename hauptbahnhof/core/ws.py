@@ -72,8 +72,8 @@ class WebSocket:
         client_info = {
             "type": "client_info",
             "client_ip": client_ip,
-            "privileged_address": f'wss://{self.config.get("internal_host")}:{self.config.get("internal_port")}',
-            "unprivileged_address": f'ws://{self.config.get("external_host")}:{self.config.get("external_port")}'
+            "privileged_address": f'ws://{self.config.get("internal_host")}:{self.config.get("internal_port")}',
+            "unprivileged_address": f'wss://{self.config.get("external_host")}:{self.config.get("external_port")}'
         }
         await websocket.send(json.dumps(client_info))
 

@@ -5,7 +5,7 @@ import Login from "./components/Login";
 import Haspa from "./components/Haspa";
 import Loading from "./components/Loading";
 
-const privilegedIP = "::1";
+const privilegedIPs = ["localhost", "10.150.9.13", "::1"];
 
 class App extends React.Component {
     state = {
@@ -58,7 +58,7 @@ class App extends React.Component {
                 setTimeout(this.refreshToken, message["expires_at"] * 1000 - new Date().getTime() - 10000);
             } else if (message["type"] === "client_info") {
                 const clientIP = message["client_ip"];
-                if (clientIP === privilegedIP && !this.state.isPrivileged) {
+                if (privilegedIPs.includes(clientIP) && !this.state.isPrivileged) {
                     this.setState({isPrivileged: true, wsURL: message["privileged_address"]});
                     this.ws = new WebSocket(message["privileged_address"]);
                     this.initWS();
