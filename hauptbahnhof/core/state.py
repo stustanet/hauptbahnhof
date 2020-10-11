@@ -4,8 +4,8 @@ import json
 import logging
 from typing import Dict, List
 
-from .babel.node import create_nodes_from_config
-from .babel.translation import Translation
+from .node import create_nodes_from_config
+from .translation import Translation
 from .config import Config
 from .utils import MQTTUpdate, StateUpdate
 

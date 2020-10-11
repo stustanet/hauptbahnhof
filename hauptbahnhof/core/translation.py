@@ -1,6 +1,6 @@
 from typing import List, Dict, Set, Optional
 
-from core import Config
+from hauptbahnhof.core import Config
 
 MAX_RECURSION_DEPTH = 10
 
