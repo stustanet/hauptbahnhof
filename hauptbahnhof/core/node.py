@@ -1,16 +1,11 @@
 import json
 import logging
-from typing import Dict, List, TypedDict
+from typing import Dict, List
 
 from hauptbahnhof.core.config import Config
 
 
 class Node:
-    class JsonRepr(TypedDict):
-        type: str
-        topic: str
-        mappings: Dict[str, int]
-
     def __init__(self, topic: str, mappings: Dict[str, int]):
         self.topic = topic
         # maps a base topic like /haspa/licht/1/c to an index of this esp
@@ -51,17 +46,11 @@ class Node:
         return {mapping: self._state[index] for mapping, index in self.mappings.items()}
 
     @classmethod
-    def from_dict(cls, dct: JsonRepr):
+    def from_dict(cls, dct: Dict):
         return cls(topic=dct["topic"], mappings=dct["mappings"])
 
 
 class DFNode(Node):
-    class JsonRepr(TypedDict):
-        type: str
-        topic: str
-        espid: str
-        mappings: Dict[str, int]
-
     def __init__(self, espid: str, topic: str, mappings: Dict[str, int]):
         super().__init__(topic, mappings)
         self.espid = espid
@@ -73,7 +62,7 @@ class DFNode(Node):
         return json.dumps(payload)
 
     @classmethod
-    def from_dict(cls, dct: JsonRepr):
+    def from_dict(cls, dct: Dict):
         return cls(topic=dct["topic"], espid=dct["espid"], mappings=dct["mappings"])
 
 
