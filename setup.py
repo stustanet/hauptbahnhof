@@ -36,8 +36,7 @@ setup(
     #         ["conf/hauptbahnhof.json", "conf/arplist.json"]
     #     ),
     # ],
-    platforms=["Linux"],
-    install_requires=["patho-mqtt", "hbmqtt", "websockets", "requests"],
+    install_requires=["paho-mqtt", "hbmqtt", "websockets", "requests"],
     classifiers=[
         "Topic :: Internet :: WWW/HTTP",
         "Intended Audience :: Developers",
