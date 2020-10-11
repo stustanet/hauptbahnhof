@@ -37,7 +37,7 @@ setup(
     #     ),
     # ],
     platforms=["Linux"],
-    install_requires=["patho-mqtt", "requests"],
+    install_requires=["patho-mqtt", "hbmqtt", "websockets", "requests"],
     classifiers=[
         "Topic :: Internet :: WWW/HTTP",
         "Intended Audience :: Developers",
