@@ -26,16 +26,16 @@ setup(
         "hauptbahnhof.haspa_web",
         "hauptbahnhof.mpd"
     ],
-    data_files=[
-        (
-            "/usr/lib/systemd/system/",
-            ["systemd/hauptbahnhof-module@.service", "systemd/hauptbahnhof.target"]
-        ),
-        (
-            "/etc/hauptbahnhof/",
-            ["conf/hauptbahnhof.json", "conf/babel.json", "conf/arplist.json"]
-        ),
-    ],
+    # data_files=[
+    #     (
+    #         "/usr/lib/systemd/system/",
+    #         ["systemd/hauptbahnhof-module@.service", "systemd/hauptbahnhof.target"]
+    #     ),
+    #     (
+    #         "/etc/hauptbahnhof/",
+    #         ["conf/hauptbahnhof.json", "conf/arplist.json"]
+    #     ),
+    # ],
     platforms=["Linux"],
     install_requires=["patho-mqtt", "requests"],
     classifiers=[
