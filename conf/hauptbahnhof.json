@@ -5,11 +5,11 @@
   },
   "websocket": {
     "chainfile": "tls.pem",
-    "externalHost": "localhost",
-    "externalPort": 8001,
-    "internalHost": "localhost",
-    "internalPort": 8002,
-    "tokenValiditySeconds": 3600,
+    "external_host": "localhost",
+    "external_port": 8001,
+    "internal_host": "localhost",
+    "internal_port": 8002,
+    "token_validity_seconds": 3600,
     "users": {
       "stustanet": "adminadmin"
     }

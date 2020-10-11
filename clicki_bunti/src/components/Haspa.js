@@ -13,6 +13,7 @@ class Haspa extends Component {
         showW: false,
         showC: false,
         currentSelection: [],
+        blockUnprivileged: false,
     }
 
     onSelectionColorChange = (color) => {
@@ -221,6 +222,24 @@ class Haspa extends Component {
         this.update(updates);
     }
 
+    blockTrolls = () => {
+        this.setState({blockUnprivileged: true});
+        const message = {
+            type: "update_troll_block",
+            block_unprivileged: true
+        }
+        this.props.send(message)
+    }
+
+    unblockTrolls = () => {
+        this.setState({blockUnprivileged: false});
+        const message = {
+            type: "update_troll_block",
+            block_unprivileged: false
+        }
+        this.props.send(message)
+    }
+
     turnOnHaspa = () => {
         this.update({
             "/haspa/licht/w": 400,
@@ -309,6 +328,23 @@ class Haspa extends Component {
             />
         }
 
+        let blockTrolls = "";
+        if (this.props.isPrivileged) {
+            if (this.state.blockUnprivileged) {
+                blockTrolls = <div className="card mb-2">
+                    <div className="card-body row justify-content-center">
+                        <button className="btn btn-outline-success" onClick={this.unblockTrolls}>unblock trolls</button>
+                    </div>
+                </div>
+            } else {
+                blockTrolls = <div className="card mb-2">
+                    <div className="card-body row justify-content-center">
+                        <button className="btn btn-outline-danger" onClick={this.blockTrolls}>block trolls</button>
+                    </div>
+                </div>
+            }
+        }
+
         return (
             <div className="container">
                 <div className="row mt-3">
@@ -322,6 +358,7 @@ class Haspa extends Component {
                 </div>
                 <div className="row">
                     <div className="col-6">
+                        {blockTrolls}
                         <HaspaPicker
                             turnOffHaspa={this.turnOffHaspa}
                             turnOnHaspa={this.turnOnHaspa}

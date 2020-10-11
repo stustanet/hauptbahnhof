@@ -5,17 +5,19 @@ import Login from "./components/Login";
 import Haspa from "./components/Haspa";
 import Loading from "./components/Loading";
 
-const wsURL = 'ws://localhost:8001';
+const privilegedIP = "::1";
 
 class App extends React.Component {
     state = {
         loading: true,
         auth: null,
         nodeState: {},
-        ws: null
+        ws: null,
+        isPrivileged: false,
+        wsURL: "wss://knecht.stusta.de:8001"
     }
 
-    ws = new WebSocket(wsURL);
+    ws = new WebSocket(this.state.wsURL);
 
     initWS = () => {
         this.ws.onopen = () => {
@@ -54,6 +56,13 @@ class App extends React.Component {
 
                 // set a timer to refresh the received token 10 seconds before it expires
                 setTimeout(this.refreshToken, message["expires_at"] * 1000 - new Date().getTime() - 10000);
+            } else if (message["type"] === "client_info") {
+                const clientIP = message["client_ip"];
+                if (clientIP === privilegedIP && !this.state.isPrivileged) {
+                    this.setState({isPrivileged: true, wsURL: message["privileged_address"]});
+                    this.ws = new WebSocket(message["privileged_address"]);
+                    this.initWS();
+                }
             } else if (message["type"] === "error") {
                 if (message["code"] === 403) {
                     this.setState({loading: false, auth: null});
@@ -82,7 +91,7 @@ class App extends React.Component {
 
             // try to reconnect after 1 second
             setTimeout(() => {
-                this.ws = new WebSocket(wsURL);
+                this.ws = new WebSocket(this.state.wsURL);
                 this.initWS();
             }, 1000);
         }
@@ -111,14 +120,16 @@ class App extends React.Component {
     }
 
     send = (payload) => {
-        if (this.state.auth === null || this.state.auth.expiresAt < new Date().getTime() / 1000) {
+        if ((this.state.auth === null || this.state.auth.expiresAt < new Date().getTime() / 1000) && !this.state.isPrivileged) {
             this.setState({auth: null});
             return
         }
 
         const msg = {
-            token: this.state.auth.token,
             ...payload
+        }
+        if (!this.state.isPrivileged) {
+            msg.token= this.state.auth.token;
         }
 
         console.log("sending message:", msg);
@@ -131,9 +142,9 @@ class App extends React.Component {
                 <Loading/>
             );
         } else {
-            if (this.state.auth !== null) {
+            if (this.state.auth !== null || this.state.isPrivileged) {
                 return (
-                    <Haspa nodeState={this.state.nodeState} send={this.send}/>
+                    <Haspa nodeState={this.state.nodeState} send={this.send} isPrivileged={this.state.isPrivileged}/>
                 );
             } else {
                 return (

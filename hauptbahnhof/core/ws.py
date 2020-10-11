@@ -4,9 +4,11 @@ import logging
 import secrets
 import ssl
 from datetime import datetime, timedelta
-from typing import Dict, Optional, Tuple
+from pathlib import Path
+from typing import Dict, Optional, Tuple, List
 
 import websockets
+from websockets import WebSocketServerProtocol
 
 from core.config import Config
 from core.state import State
@@ -32,26 +34,48 @@ def authenticated(func):
     return wrapped
 
 
+def privileged(func):
+    async def wrapped(self, websocket, msg: Dict, requires_auth: bool = False):
+        if not requires_auth:
+            await func(self, websocket, msg)
+        else:
+            await _send_error(websocket, 403)
+
+    return wrapped
+
+
 class WebSocket:
     def __init__(self, config: Config, state: State, logger: logging.Logger):
         self.config = config.get("websocket", {})
         self.logger = logger
         self.state = state
 
+        self.block_unprivileged = False
+
         self.cache: Dict[str, datetime] = {}
         self._token_validity_time = timedelta(
-            seconds=self.config.get("tokenValiditySeconds", 3600)
+            seconds=self.config.get("token_alidity_seconds", 3600)
         )
 
         # initialize ssl
         self.ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-        # self.ssl_context.load_cert_chain(Path(self.config.get("chainfile")))
+        self.ssl_context.load_cert_chain(Path(self.config.get("chainfile")))
 
         self.connections = set()
 
-    async def _send_state(self, websocket):
-        update = {"type": "state", "state": self.state.to_dict()}
+    async def _send_state(self, websocket: WebSocketServerProtocol):
+        update = {"type": "state", "state": self.state.to_dict(), "block_unprivileged": self.block_unprivileged}
         await websocket.send(json.dumps(update))
+
+    async def _send_client_info(self, websocket: WebSocketServerProtocol):
+        client_ip = websocket.remote_address[0]
+        client_info = {
+            "type": "client_info",
+            "client_ip": client_ip,
+            "privileged_address": f'wss://{self.config.get("internal_host")}:{self.config.get("internal_port")}',
+            "unprivileged_address": f'ws://{self.config.get("external_host")}:{self.config.get("external_port")}'
+        }
+        await websocket.send(json.dumps(client_info))
 
     async def send_update(self, msg: Dict):
         encoded_msg = json.dumps(msg)
@@ -62,10 +86,10 @@ class WebSocket:
             if self.cache[token] <= datetime.now():
                 del self.cache[token]
 
-    async def _register(self, websocket):
+    async def _register(self, websocket: WebSocketServerProtocol):
         self.connections.add(websocket)
 
-    async def _unregister(self, websocket):
+    async def _unregister(self, websocket: WebSocketServerProtocol):
         self.connections.remove(websocket)
         self._refresh_cache()
 
@@ -102,16 +126,29 @@ class WebSocket:
 
         return None
 
+    @privileged
+    async def _handle_update_troll_block(self, websocket: WebSocketServerProtocol, msg: Dict):
+        if "block_unprivileged" in msg and isinstance(msg["block_unprivileged"], bool):
+            self.block_unprivileged = msg["block_unprivileged"]
+            self.logger.info("updated block_unprivileged = %s", self.block_unprivileged)
+
     @authenticated
-    async def _handle_state_update(self, websocket, msg):
+    async def _handle_state_update(self, websocket: WebSocketServerProtocol, msg: Dict):
         await self.state.process_updates(msg.get("updates", {}))
 
     async def _handle_ws_message(
-        self, websocket, msg: Dict, requires_auth: bool = True
+        self, websocket: WebSocketServerProtocol, msg: Dict, requires_auth: bool = True
     ):
+        if self.block_unprivileged and requires_auth:
+            await _send_error(websocket, 503)
+            return
+
         msg_type = msg.get("type")
         if msg_type == "state_update":
             await self._handle_state_update(websocket, msg, requires_auth)
+
+        if msg_type == "update_troll_block":
+            await self._handle_update_troll_block(websocket, msg, requires_auth)
 
         if msg_type == "refresh_token":
             token = self._refresh_token(msg.get("token"))
@@ -147,12 +184,15 @@ class WebSocket:
                 )
                 await self._send_state(websocket)
 
-    async def ws_handler(self, websocket, path, requires_auth=True):
-        self.logger.debug("received new websocket connection %s", websocket)
+    async def ws_handler(self, websocket: WebSocketServerProtocol, path: str, requires_auth=True):
+        self.logger.debug("received new websocket connection %s, privileged: %s", websocket, not requires_auth)
         await self._register(websocket)
         try:
             if not requires_auth:
                 await self._send_state(websocket)
+
+            await self._send_client_info(websocket)
+
             while True:
                 msg = await websocket.recv()
                 msg_decoded = json.loads(msg)
@@ -164,16 +204,18 @@ class WebSocket:
         finally:
             await self._unregister(websocket)
 
-    async def ws_handler_unauthenticated(self, websocket, path):
+    async def ws_handler_privileged(self, websocket: websockets.WebSocketServerProtocol, path: str):
         await self.ws_handler(websocket, path, requires_auth=False)
 
     async def state_handler(self):
         self.logger.info("started websocket state update loop")
         while True:
-            update: StateUpdate = await self.state.ws_update_queue.get()
+            updates: List[StateUpdate] = await self.state.ws_update_queue.get()
             update_msg = {
                 "type": "state_update",
-                "updates": {"nodes": {update.topic: update.value}},
+                "updates": {"nodes": {
+                    update.topic: update.value for update in updates
+                }},
             }
 
             await self.send_update(update_msg)
@@ -182,14 +224,13 @@ class WebSocket:
         return asyncio.gather(
             websockets.serve(
                 self.ws_handler,
-                self.config.get("externalHost"),
-                self.config.get("externalPort"),
-                # ssl=self.ssl_context
+                self.config.get("external_host"),
+                self.config.get("external_port"),
+                ssl=self.ssl_context
             ),
             websockets.serve(
-                self.ws_handler_unauthenticated,
-                self.config.get("internalHost"),
-                self.config.get("internalPort"),
-                # ssl=self.ssl_context
+                self.ws_handler_privileged,
+                self.config.get("internal_host"),
+                self.config.get("internal_port"),
             ),
         )

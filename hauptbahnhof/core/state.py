@@ -1,7 +1,8 @@
 import asyncio
+import itertools
 import json
 import logging
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from core.babel.node import create_nodes_from_config
 from core.babel.translation import Translation
@@ -17,7 +18,7 @@ class State:
         self.nodes = nodes
         self.translation = translation
 
-        self.ws_update_queue = asyncio.Queue()
+        self.ws_update_queue: asyncio.Queue[List[StateUpdate]] = asyncio.Queue()
         self.mqtt_update_queue = asyncio.Queue()
 
     async def init(self):
@@ -26,7 +27,7 @@ class State:
                 MQTTUpdate(node.topic, node.state_as_mqtt_message())
             )
 
-    async def _update_node_state(self, topic: str, value: int) -> None:
+    async def _update_node_state(self, topic: str, value: int) -> List[StateUpdate]:
         update = StateUpdate(topic, value)
         did_update = False
         for node in self.nodes:
@@ -37,32 +38,32 @@ class State:
                     MQTTUpdate(node.topic, node.state_as_mqtt_message())
                 )
 
-        if did_update:
-            await self.ws_update_queue.put(update)
+        return [update] if did_update else []
 
-    async def update_node_topic(self, topic: str, value: int) -> None:
+    async def update_node_topic(self, topic: str, value: int) -> List[StateUpdate]:
         """
         Process a value input on a topic with translation
         """
         topics = self.translation.translate(topic)
         if not topics:
             # we expect a base topic here
-            await self._update_node_state(topic, value)
-            return
+            return await self._update_node_state(topic, value)
 
-        await asyncio.gather(
+        updates: List[List[StateUpdate]] = await asyncio.gather(
             *[self._update_node_state(topic, value) for topic in topics]
         )
+        return list(itertools.chain.from_iterable(updates))
 
     async def process_updates(self, updates: Dict) -> None:
         # process node updates
-        await asyncio.gather(
+        updates: List[List[StateUpdate]] = await asyncio.gather(
             *[
                 self.update_node_topic(topic, value)
                 for topic, value in updates.get("nodes", {}).items()
             ]
         )
         # insert any other state update processing here
+        await self.ws_update_queue.put(list(itertools.chain.from_iterable(updates)))
 
     def to_dict(self) -> Dict:
         state_dict = {"nodes": {}, **self._state}

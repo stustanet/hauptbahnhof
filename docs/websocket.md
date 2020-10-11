@@ -11,6 +11,18 @@ The token field is required for not implicitly trusted clients. A token can be f
 
 ## Messages
 
+### Client Info
+```json
+{
+  "type": "client_info",
+  "client_ip": "<ip of this client connecting to the API>", 
+  "privileged_address": "<address of the privileged API>",
+  "unprivileged_address": "<address of the unprivileged API>"
+}
+```
+Sent by the API on new client connection to inform the client about its IP address such that it can decide whether to
+connect to the privileged API, i.e. if we are accessing the frontend on knecht directly.
+
 ### State update
 ```json
 {
@@ -69,3 +81,27 @@ If a valid token is provided will be answered with a `authenticated` response co
   "expires_at": "<token expiry time as utc timestamp>"
 }
 ```
+
+### Update Troll Block
+```json
+{
+  "type": "update_troll_block", 
+  "block_unprivileged": "<bool>"
+}
+```
+Enable/Disable unprivileged API sockets.
+
+### Error
+```json
+{
+  "type": "error",
+  "code": "<http like status code>"
+}
+```
+
+Used error codes
+
+| error code | meaning |
+|---|---|
+| 403 | unauthorized |
+| 503 | temporarily unavailable (i.e. troll block is in action - unprivileged API is disabled) |
