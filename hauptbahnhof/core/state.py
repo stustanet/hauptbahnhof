@@ -38,6 +38,7 @@ class State:
         for node in self.nodes:
             valid_node = node.set_state_for_topic(topic, value)
             if valid_node:
+                did_update = True
                 updated_nodes.add(node)
 
         updates = [StateUpdate(topic, value)] if did_update else []
