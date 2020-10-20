@@ -14,7 +14,7 @@ class App extends React.Component {
         nodeState: {},
         ws: null,
         isPrivileged: false,
-        wsURL: "wss://knecht.stusta.de:8001"
+        wsURL: "wss://" + window.location.hostname + ":8001"
     }
 
     ws = new WebSocket(this.state.wsURL);
