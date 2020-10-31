@@ -35,7 +35,7 @@ class MQTT:
             )
             return
 
-        await self.state.update_node_topic(msg.topic, int(msg.data))
+        await self.state.process_updates({msg.topic: int(msg.data)})
 
     async def run(self):
         while True:
