@@ -1,12 +1,11 @@
 import asyncio
-import itertools
 import json
 import logging
 from typing import Dict, List, Tuple, Set
 
+from .config import Config
 from .node import create_nodes_from_config, Node
 from .translation import Translation
-from .config import Config
 from .utils import MQTTUpdate, StateUpdate
 
 
@@ -84,7 +83,8 @@ class State:
         # insert any other state update processing here
         await asyncio.gather(
             self.ws_update_queue.put(state_updates),
-            *[self.mqtt_update_queue.put(MQTTUpdate(node.topic, node.state_as_mqtt_message())) for node in updated_nodes]
+            *[self.mqtt_update_queue.put(MQTTUpdate(node.topic, node.state_as_mqtt_message())) for node in
+              updated_nodes]
         )
 
     def to_dict(self) -> Dict:
