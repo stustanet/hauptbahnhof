@@ -85,7 +85,7 @@ class WebSocket:
 
     async def send_update(self, msg: Dict):
         encoded_msg = json.dumps(msg)
-        await asyncio.wait([conn.send(encoded_msg) for conn in self.connections])
+        await asyncio.gather(*[conn.send(encoded_msg) for conn in self.connections])
 
     def _refresh_cache(self):
         for token in list(self.cache.keys()):
